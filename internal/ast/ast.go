@@ -8,10 +8,14 @@ type Expr interface {
 
 // Expressions
 type (
+	// An integer literal.
+	// E.g., `123`
 	IntegerLiteral struct {
 		V string
 	}
 
+	// A binary expression.
+	// E.g., `x + y`
 	BinaryExpr struct {
 		X  Expr
 		Op BinOpKind
@@ -26,10 +30,10 @@ func (*BinaryExpr) exprNode()     {}
 type BinOpKind int
 
 const (
-	Add BinOpKind = iota + 1 // `+` (addition)
-	Sub                      // `-` (subtraction)
-	Mul                      // `*` (multiplication)
-	Div                      // `/` (division)
+	Add BinOpKind = iota // `+` (addition)
+	Sub                  // `-` (subtraction)
+	Mul                  // `*` (multiplication)
+	Div                  // `/` (division)
 )
 
 // Prec returns the operator precedence for binary operator op.
