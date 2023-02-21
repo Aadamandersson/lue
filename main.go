@@ -189,30 +189,41 @@ func (*BinaryExpr) exprNode()     {}
 type BinOpKind int
 
 const (
-	Add BinOpKind = iota // `+` (addition)
-	Sub                  // `-` (subtraction)
-	Mul                  // `*` (multiplication)
-	Div                  // `/` (division)
+	Add BinOpKind = iota + 1 // `+` (addition)
+	Sub                      // `-` (subtraction)
+	Mul                      // `*` (multiplication)
+	Div                      // `/` (division)
 )
 
-// BinOpFromToken constructs a BinOpKind from the given token.
-//
-// Panics if the given token is not a valid binary operator.
-func BinOpFromToken(t Token) BinOpKind {
-	var k BinOpKind
+// Prec returns the operator precedence for binary operator op.
+func (op BinOpKind) Prec() int {
+	switch op {
+	case Mul, Div:
+		return 2
+	case Add, Sub:
+		return 1
+	default:
+		return 0
+	}
+}
+
+// BinOpFromToken returns the binOp for token t and a boolean true, if its a valid binary operator.
+// Otherwise, returns the zero value of BinOpKind and a boolean false.
+func BinOpFromToken(t Token) (binOp BinOpKind, isBinOp bool) {
+	isBinOp = true
 	switch t.Kind {
 	case Plus:
-		k = Add
+		binOp = Add
 	case Minus:
-		k = Sub
+		binOp = Sub
 	case Star:
-		k = Mul
+		binOp = Mul
 	case Slash:
-		k = Div
+		binOp = Div
 	default:
-		panic(fmt.Sprintf("`%s` is not a supported binary operator\n", t.Kind.String()))
+		isBinOp = false
 	}
-	return k
+	return
 }
 
 func Parse(src []byte) Expr {
@@ -235,37 +246,35 @@ func newParser(tokens []Token) parser {
 }
 
 func (p *parser) parse() Expr {
-	return p.parseBinaryExpr()
+	return p.parseExpr()
 }
 
-func (p *parser) parseBinaryExpr() Expr {
-	expr := p.parseBotExpr()
+func (p *parser) parseExpr() Expr {
+	return p.parsePrecExpr(0)
+}
+
+func (p *parser) parsePrecExpr(min_prec int) Expr {
+	expr := p.parsePrimaryExpr()
 
 	for {
-		if p.tok.IsOneOf(Plus, Minus) {
-			op := p.parseBinOp()
-			rhs := p.parseBotExpr()
-			expr = &BinaryExpr{X: expr, Op: op, Y: rhs}
-		} else {
+		op, ok := BinOpFromToken(p.tok)
+		if !ok || op.Prec() < min_prec {
 			break
 		}
+		p.next()
+		rhs := p.parsePrecExpr(op.Prec())
+		expr = &BinaryExpr{X: expr, Op: op, Y: rhs}
 	}
 
 	return expr
 }
 
-func (p *parser) parseBotExpr() Expr {
+func (p *parser) parsePrimaryExpr() Expr {
 	if ok := p.eat(Number); ok {
 		return &IntegerLiteral{V: p.prev_tok.Lit}
 	}
 
 	return nil
-}
-
-func (p *parser) parseBinOp() BinOpKind {
-	op := BinOpFromToken(p.tok)
-	p.next()
-	return op
 }
 
 // eat advances the parser to the next token and returns true, if the current token kind
@@ -333,7 +342,7 @@ func (e *evaluator) evalBinaryExpr(expr *BinaryExpr) int {
 }
 
 func main() {
-	src := "5 + 1"
+	src := "2 + 3 * 4 + 5"
 	result := Evaluate([]byte(src))
 	fmt.Println(result)
 }
