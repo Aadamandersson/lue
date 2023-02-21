@@ -10,8 +10,9 @@ const (
 	Number              // E.g., `123`
 	Plus                // `+`
 	Minus               // `-`
-	Star                //`*`
+	Star                // `*`
 	Slash               // `/`
+	end
 )
 
 var tokens = [...]string{
@@ -29,6 +30,11 @@ func (k Kind) String() string {
 		return "TokenKind(" + strconv.FormatInt(int64(k), 10) + ")"
 	}
 	return tokens[k]
+}
+
+// Ok returns true if kind k is a valid kind, otherwise false.
+func (k Kind) Ok() bool {
+	return k >= 0 && k < end
 }
 
 type Token struct {

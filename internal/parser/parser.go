@@ -8,7 +8,7 @@ import (
 
 func Parse(src []byte) ast.Expr {
 	tokens := lexer.Lex(src)
-	p := newParser(tokens)
+	p := new(tokens)
 	return p.parse()
 }
 
@@ -19,7 +19,7 @@ type parser struct {
 	pos      int
 }
 
-func newParser(tokens []token.Token) parser {
+func new(tokens []token.Token) parser {
 	p := parser{tokens: tokens}
 	p.next()
 	return p
