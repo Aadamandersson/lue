@@ -23,7 +23,7 @@ func (l *lexer) Lex() []token.Token {
 		if b == 0 {
 			break
 		}
-		if l.isWhitespace(b) {
+		if isWhitespace(b) {
 			l.eatWhitespace()
 			continue
 		}
@@ -47,17 +47,27 @@ func (l *lexer) lexToken(first byte) (token.Kind, string) {
 		return token.Star, ""
 	case '/':
 		return token.Slash, ""
+	case '=':
+		return token.Eq, ""
 	case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 		return l.lexNumeric(first)
 	default:
+		if isIdentStart(first) {
+			return l.lexIdent(first)
+		}
 		return token.Unknown, string(first)
 	}
 }
 
 // lexNumeric lexes a number and returns its kind and literal value.
 func (l *lexer) lexNumeric(first byte) (token.Kind, string) {
-	s := l.collectString(first, l.isDigit)
+	s := l.collectString(first, isDigit)
 	return token.Number, s
+}
+
+func (l *lexer) lexIdent(first byte) (token.Kind, string) {
+	s := l.collectString(first, isIdentCont)
+	return token.Ident, s
 }
 
 // collectString collects bytes into a string while matches returns true and
@@ -95,19 +105,31 @@ func (l *lexer) next() {
 	}
 }
 
+// eatWhitespace advances the lexer to the next non-whitespace byte in src.
+func (l *lexer) eatWhitespace() {
+	for isWhitespace(l.peek()) {
+		l.next()
+	}
+}
+
 // isDigit returns true if byte b is a digit, otherwise false.
-func (l *lexer) isDigit(b byte) bool {
+func isDigit(b byte) bool {
 	return b >= '0' && b <= '9'
 }
 
-// isWhitespace returns true if byte b is whitespace, otherwise false.
-func (l *lexer) isWhitespace(b byte) bool {
-	return b == ' ' || b == '\t' || b == '\r' || b == '\n'
+// isIdentStart returns true if byte b is valid as a first character
+// of an identifier, otherwise false.
+func isIdentStart(b byte) bool {
+	return (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || b == '_'
 }
 
-// eatWhitespace advances the lexer to the next non-whitespace byte in src.
-func (l *lexer) eatWhitespace() {
-	for l.isWhitespace(l.peek()) {
-		l.next()
-	}
+// isIdentCont returns true if byte b is valid as a non-first character
+// of an identifier, otherwise false.
+func isIdentCont(b byte) bool {
+	return isIdentStart(b) || isDigit(b)
+}
+
+// isWhitespace returns true if byte b is whitespace, otherwise false.
+func isWhitespace(b byte) bool {
+	return b == ' ' || b == '\t' || b == '\r' || b == '\n'
 }

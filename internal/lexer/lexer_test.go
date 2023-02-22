@@ -15,11 +15,15 @@ var cases = []struct {
 	{"\t", token.New(token.Eof, "")},
 	{"\r", token.New(token.Eof, "")},
 	{"\r\n", token.New(token.Eof, "")},
+	{"foo", token.New(token.Ident, "foo")},
+	{"_foo", token.New(token.Ident, "_foo")},
+	{"foo123", token.New(token.Ident, "foo123")},
 	{"123", token.New(token.Number, "123")},
 	{"+", token.New(token.Plus, "")},
 	{"-", token.New(token.Minus, "")},
 	{"*", token.New(token.Star, "")},
 	{"/", token.New(token.Slash, "")},
+	{"=", token.New(token.Eq, "")},
 }
 
 func TestLex(t *testing.T) {

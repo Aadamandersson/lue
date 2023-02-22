@@ -13,6 +13,13 @@ type Expr interface {
 
 // Expressions
 type (
+	// An identifier.
+	// E.g., `foo`
+	Ident struct {
+		Name string
+		Ty   Ty
+	}
+
 	// An integer literal.
 	// E.g., `123`
 	IntegerLiteral struct {
@@ -27,14 +34,27 @@ type (
 		Y  Expr
 	}
 
+	// An assignment expression.
+	// `expr = init`
+	AssignExpr struct {
+		Ident *Ident // FIXME: change to expr when we support let bindings.
+		Init  Expr
+	}
+
 	// Placeholder when we have some bind error.
 	ErrExpr struct{}
 )
 
 // Ensure that we can only assign expression nodes to an Expr.
+func (*Ident) exprNode()          {}
 func (*IntegerLiteral) exprNode() {}
 func (*BinaryExpr) exprNode()     {}
+func (*AssignExpr) exprNode()     {}
 func (*ErrExpr) exprNode()        {}
+
+func (i *Ident) Type() Ty {
+	return i.Ty
+}
 
 func (il *IntegerLiteral) Type() Ty {
 	return TInt
@@ -42,6 +62,10 @@ func (il *IntegerLiteral) Type() Ty {
 
 func (be *BinaryExpr) Type() Ty {
 	return be.Op.Ty
+}
+
+func (ae *AssignExpr) Type() Ty {
+	return ae.Init.Type()
 }
 
 func (ee *ErrExpr) Type() Ty {

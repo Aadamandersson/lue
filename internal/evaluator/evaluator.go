@@ -9,11 +9,17 @@ import (
 func Evaluate(src []byte) int {
 	aExpr := parser.Parse(src)
 	expr := binder.Bind(aExpr)
-	e := evaluator{}
+	e := new()
 	return e.eval(expr)
 }
 
-type evaluator struct{}
+type evaluator struct {
+	locals map[string]int
+}
+
+func new() evaluator {
+	return evaluator{locals: make(map[string]int)}
+}
 
 func (e *evaluator) eval(expr bir.Expr) int {
 	return e.evalExpr(expr)
@@ -21,10 +27,14 @@ func (e *evaluator) eval(expr bir.Expr) int {
 
 func (e *evaluator) evalExpr(expr bir.Expr) int {
 	switch expr := expr.(type) {
+	case *bir.Ident:
+		return e.locals[expr.Name]
 	case *bir.IntegerLiteral:
 		return expr.V
 	case *bir.BinaryExpr:
 		return e.evalBinaryExpr(expr)
+	case *bir.AssignExpr:
+		return e.evalAssignExpr(expr)
 	}
 	panic("unreachable")
 }
@@ -45,4 +55,10 @@ func (e *evaluator) evalBinaryExpr(expr *bir.BinaryExpr) int {
 	}
 
 	panic("unreachable")
+}
+
+func (e *evaluator) evalAssignExpr(expr *bir.AssignExpr) int {
+	init := e.evalExpr(expr.Init)
+	e.locals[expr.Ident.Name] = init
+	return init
 }

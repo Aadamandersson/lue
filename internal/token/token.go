@@ -7,22 +7,26 @@ type Kind int
 const (
 	Unknown Kind = iota // An unknown character to the lexer.
 	Eof                 // End of file.
+	Ident               // E.g., `foo`
 	Number              // E.g., `123`
 	Plus                // `+`
 	Minus               // `-`
 	Star                // `*`
 	Slash               // `/`
+	Eq                  // `=`
 	end
 )
 
 var tokens = [...]string{
 	Unknown: "unknown",
 	Eof:     "eof",
+	Ident:   "identifier",
 	Number:  "number",
 	Plus:    "+",
 	Minus:   "-",
 	Star:    "*",
 	Slash:   "/",
+	Eq:      "=",
 }
 
 func (k Kind) String() string {
