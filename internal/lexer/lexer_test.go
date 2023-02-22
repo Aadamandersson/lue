@@ -24,6 +24,12 @@ var cases = []struct {
 	{"*", token.New(token.Star, "")},
 	{"/", token.New(token.Slash, "")},
 	{"=", token.New(token.Eq, "")},
+	{">", token.New(token.Gt, "")},
+	{"<", token.New(token.Lt, "")},
+	{">=", token.New(token.Ge, "")},
+	{"<=", token.New(token.Le, "")},
+	{"==", token.New(token.EqEq, "")},
+	{"!=", token.New(token.Ne, "")},
 	{"false", token.New(token.False, "false")},
 	{"true", token.New(token.True, "true")},
 }

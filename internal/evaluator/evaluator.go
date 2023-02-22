@@ -86,8 +86,26 @@ func (e *evaluator) evalBinaryExpr(expr *bir.BinaryExpr) Value {
 			return x * y
 		case bir.Div:
 			return x / y
-		default:
-			panic("unreachable")
+		case bir.Gt:
+			return Boolean(x > y)
+		case bir.Lt:
+			return Boolean(x < y)
+		case bir.Ge:
+			return Boolean(x >= y)
+		case bir.Le:
+			return Boolean(x <= y)
+		case bir.Eq:
+			return Boolean(x == y)
+		case bir.Ne:
+			return Boolean(x != y)
+		}
+	case Boolean:
+		y := y.(Boolean)
+		switch expr.Op.Kind {
+		case bir.Eq:
+			return Boolean(x == y)
+		case bir.Ne:
+			return Boolean(x != y)
 		}
 	}
 	panic("unreachable")

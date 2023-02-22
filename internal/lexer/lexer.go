@@ -38,6 +38,7 @@ func (l *lexer) Lex() []token.Token {
 }
 
 func (l *lexer) lexToken(first byte) (token.Kind, string) {
+	peek := l.peek()
 	switch first {
 	case '+':
 		return token.Plus, ""
@@ -47,8 +48,30 @@ func (l *lexer) lexToken(first byte) (token.Kind, string) {
 		return token.Star, ""
 	case '/':
 		return token.Slash, ""
+	case '>':
+		if peek == '=' {
+			l.next()
+			return token.Ge, ""
+		}
+		return token.Gt, ""
+	case '<':
+		if peek == '=' {
+			l.next()
+			return token.Le, ""
+		}
+		return token.Lt, ""
 	case '=':
+		if peek == '=' {
+			l.next()
+			return token.EqEq, ""
+		}
 		return token.Eq, ""
+	case '!':
+		if peek == '=' {
+			l.next()
+			return token.Ne, ""
+		}
+		return token.Unknown, string(first)
 	case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 		return l.lexNumeric(first)
 	default:

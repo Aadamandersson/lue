@@ -119,6 +119,17 @@ var binOps = [...]struct {
 	{ast.Sub, TInt, TInt, BinOp{Kind: Sub, Ty: TInt}},
 	{ast.Mul, TInt, TInt, BinOp{Kind: Mul, Ty: TInt}},
 	{ast.Div, TInt, TInt, BinOp{Kind: Div, Ty: TInt}},
+
+	{ast.Gt, TInt, TInt, BinOp{Kind: Gt, Ty: TBool}},
+	{ast.Lt, TInt, TInt, BinOp{Kind: Lt, Ty: TBool}},
+	{ast.Ge, TInt, TInt, BinOp{Kind: Ge, Ty: TBool}},
+	{ast.Le, TInt, TInt, BinOp{Kind: Le, Ty: TBool}},
+
+	{ast.Eq, TInt, TInt, BinOp{Kind: Eq, Ty: TBool}},
+	{ast.Eq, TBool, TBool, BinOp{Kind: Eq, Ty: TBool}},
+
+	{ast.Ne, TInt, TInt, BinOp{Kind: Ne, Ty: TBool}},
+	{ast.Ne, TBool, TBool, BinOp{Kind: Ne, Ty: TBool}},
 }
 
 func BindBinOp(astOp ast.BinOpKind, xTy, yTy Ty) (BinOp, bool) {
@@ -137,4 +148,10 @@ const (
 	Sub                  // `-` (subtraction)
 	Mul                  // `*` (multiplication)
 	Div                  // `/` (division)
+	Gt                   // `>` (greater than)
+	Lt                   // `<` (less than)
+	Ge                   // `>=` (greater than or equal)
+	Le                   // `<=` (less than or equal)
+	Eq                   // `==` (equality)
+	Ne                   // `!=` (not equal)
 )

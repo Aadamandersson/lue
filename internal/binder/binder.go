@@ -65,6 +65,8 @@ func (b *binder) bindBinaryExpr(expr *ast.BinaryExpr) bir.Expr {
 			fmt.Printf("cannot multiply `%s` by `%s`\n", x.Type(), y.Type())
 		case ast.Div:
 			fmt.Printf("cannot divide `%s` by `%s`\n", x.Type(), y.Type())
+		case ast.Gt, ast.Lt, ast.Ge, ast.Le, ast.Eq, ast.Ne:
+			fmt.Printf("cannot compare `%s` with `%s`\n", x.Type(), y.Type())
 		default:
 			panic("unreachable")
 		}

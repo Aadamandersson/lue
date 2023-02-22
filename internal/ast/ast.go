@@ -61,6 +61,12 @@ const (
 	Sub                     // `-` (subtraction)
 	Mul                     // `*` (multiplication)
 	Div                     // `/` (division)
+	Gt                      // `>` (greater than)
+	Lt                      // `<` (less than)
+	Ge                      // `>=` (greater than or equal)
+	Le                      // `<=` (less than or equal)
+	Eq                      // `==` (equality)
+	Ne                      // `!=` (not equal)
 	Assign                  // `=` (assignment)
 )
 
@@ -69,6 +75,12 @@ var binOps = [...]string{
 	Sub:    "-",
 	Mul:    "*",
 	Div:    "/",
+	Gt:     ">",
+	Lt:     "<",
+	Ge:     ">=",
+	Le:     "<=",
+	Eq:     "==",
+	Ne:     "!=",
 	Assign: "=",
 }
 
@@ -83,8 +95,10 @@ func (op BinOpKind) String() string {
 func (op BinOpKind) Prec() int {
 	switch op {
 	case Mul, Div:
-		return 3
+		return 4
 	case Add, Sub:
+		return 3
+	case Gt, Lt, Ge, Le, Eq, Ne:
 		return 2
 	case Assign:
 		return 1
@@ -105,7 +119,7 @@ func (op BinOpKind) Assoc() Assoc {
 	switch op {
 	case Assign:
 		return AssocRight
-	case Add, Sub, Mul, Div:
+	case Add, Sub, Mul, Div, Gt, Lt, Ge, Le, Eq, Ne:
 		return AssocLeft
 	}
 	panic(fmt.Sprintf("`%s` is not a valid binary operator\n", op.String()))
@@ -124,6 +138,18 @@ func BinOpFromToken(t token.Token) (binOp BinOpKind, isBinOp bool) {
 		binOp = Mul
 	case token.Slash:
 		binOp = Div
+	case token.Gt:
+		binOp = Gt
+	case token.Lt:
+		binOp = Lt
+	case token.Ge:
+		binOp = Ge
+	case token.Le:
+		binOp = Le
+	case token.EqEq:
+		binOp = Eq
+	case token.Ne:
+		binOp = Ne
 	case token.Eq:
 		binOp = Assign
 	default:

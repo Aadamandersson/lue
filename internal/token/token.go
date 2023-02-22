@@ -14,6 +14,12 @@ const (
 	Star                // `*`
 	Slash               // `/`
 	Eq                  // `=`
+	Gt                  // `>`
+	Lt                  // `<`
+	Ge                  // `>=`
+	Le                  // `<=`
+	EqEq                // `==`
+	Ne                  // `!=`
 	False               // `false`
 	True                // `true`
 	end
@@ -29,6 +35,12 @@ var tokens = [...]string{
 	Star:    "*",
 	Slash:   "/",
 	Eq:      "=",
+	Gt:      ">",
+	Lt:      "<",
+	Ge:      ">=",
+	Le:      ">=",
+	EqEq:    "==",
+	Ne:      "!=",
 	False:   "false",
 	True:    "true",
 }
