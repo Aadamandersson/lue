@@ -37,7 +37,7 @@ func (b *binder) bindExpr(expr ast.Expr) bir.Expr {
 		if e, ok := b.values[expr.Name]; ok {
 			return &bir.Ident{Name: expr.Name, Ty: e.Type()}
 		}
-		b.error(expr.Sp, "could not find anything named `%s`\n", expr.Name)
+		b.error(expr.Sp, "could not find anything named `%s`", expr.Name)
 		return &bir.ErrExpr{}
 	case *ast.IntegerLiteral:
 		if v, err := strconv.Atoi(expr.V); err == nil {
@@ -67,15 +67,15 @@ func (b *binder) bindBinaryExpr(expr *ast.BinaryExpr) bir.Expr {
 		sp := expr.Op.Sp
 		switch expr.Op.Kind {
 		case ast.Add:
-			b.error(sp, "cannot add `%s` to `%s`\n", x.Type(), y.Type())
+			b.error(sp, "cannot add `%s` to `%s`", x.Type(), y.Type())
 		case ast.Sub:
-			b.error(sp, "cannot subtract `%s` from `%s`\n", y.Type(), x.Type())
+			b.error(sp, "cannot subtract `%s` from `%s`", y.Type(), x.Type())
 		case ast.Mul:
-			b.error(sp, "cannot multiply `%s` by `%s`\n", x.Type(), y.Type())
+			b.error(sp, "cannot multiply `%s` by `%s`", x.Type(), y.Type())
 		case ast.Div:
-			b.error(sp, "cannot divide `%s` by `%s`\n", x.Type(), y.Type())
+			b.error(sp, "cannot divide `%s` by `%s`", x.Type(), y.Type())
 		case ast.Gt, ast.Lt, ast.Ge, ast.Le, ast.Eq, ast.Ne:
-			b.error(sp, "cannot compare `%s` with `%s`\n", x.Type(), y.Type())
+			b.error(sp, "cannot compare `%s` with `%s`", x.Type(), y.Type())
 		default:
 			panic("unreachable")
 		}

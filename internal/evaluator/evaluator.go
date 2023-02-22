@@ -36,7 +36,7 @@ func (u Unit) String() string {
 	return "()"
 }
 
-func Evaluate(src []byte) (Value, bool) {
+func Evaluate(filename string, src []byte) (Value, bool) {
 	diags := diagnostic.NewBag()
 	aExpr := parser.Parse(src, diags)
 	expr := binder.Bind(aExpr, diags)
@@ -44,10 +44,7 @@ func Evaluate(src []byte) (Value, bool) {
 	result, ok := e.eval(expr)
 
 	if !diags.Empty() {
-		diags.ForEach(func(d *diagnostic.Diagnostic) bool {
-			fmt.Println(d.Msg)
-			return false
-		})
+		diags.Dump(filename, src)
 	}
 
 	return result, ok

@@ -1,5 +1,6 @@
 
 
 a = 1 + 2
-b = a + 5
-b
+b = a + true
+c = a + c
+c

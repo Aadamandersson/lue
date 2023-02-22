@@ -8,15 +8,15 @@ import (
 )
 
 func main() {
-	inputFile := "examples/basic.lue"
-	src, err := os.ReadFile(inputFile)
+	filename := "examples/basic.lue"
+	src, err := os.ReadFile(filename)
 	if err != nil {
-		fmt.Printf("could not read file `%s`: %v\n", inputFile, err)
+		fmt.Printf("could not read file `%s`: %v\n", filename, err)
 		os.Exit(1)
 	}
-	result, ok := evaluator.Evaluate(src)
+	result, ok := evaluator.Evaluate(filename, src)
 	if !ok {
-		fmt.Printf("could not interpret `%s` due to previous errors.\n", inputFile)
+		fmt.Printf("error: could not interpret `%s` due to previous errors.\n", filename)
 	} else {
 		fmt.Println(result)
 	}
