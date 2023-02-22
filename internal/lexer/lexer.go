@@ -3,6 +3,7 @@ package lexer
 import (
 	"strings"
 
+	"github.com/aadamandersson/lue/internal/span"
 	"github.com/aadamandersson/lue/internal/token"
 )
 
@@ -28,12 +29,13 @@ func (l *lexer) Lex() []token.Token {
 			continue
 		}
 
+		start := l.pos
 		l.next()
 		kind, lit := l.lexToken(b)
-		tokens = append(tokens, token.New(kind, lit))
+		tokens = append(tokens, token.New(kind, lit, span.New(start, l.pos)))
 	}
 
-	tokens = append(tokens, token.New(token.Eof, ""))
+	tokens = append(tokens, token.New(token.Eof, "", span.NewEmpty(l.pos)))
 	return tokens
 }
 

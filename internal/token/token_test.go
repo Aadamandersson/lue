@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/aadamandersson/lue/internal/span"
 )
 
 func TestString(t *testing.T) {
@@ -16,6 +18,7 @@ func TestString(t *testing.T) {
 }
 
 func TestIsOneOf(t *testing.T) {
+	dummySpan := span.NewEmpty(0)
 	ks := []Kind{
 		Number,
 		Plus,
@@ -25,10 +28,10 @@ func TestIsOneOf(t *testing.T) {
 		in   Token
 		want bool
 	}{
-		{New(Number, "dummy"), true},
-		{New(Plus, ""), true},
-		{New(Minus, ""), true},
-		{New(Star, ""), false},
+		{New(Number, "dummy", dummySpan), true},
+		{New(Plus, "", dummySpan), true},
+		{New(Minus, "", dummySpan), true},
+		{New(Star, "", dummySpan), false},
 	}
 
 	for _, c := range cases {

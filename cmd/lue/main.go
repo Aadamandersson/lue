@@ -14,6 +14,10 @@ func main() {
 		fmt.Printf("could not read file `%s`: %v\n", inputFile, err)
 		os.Exit(1)
 	}
-	result := evaluator.Evaluate(src)
-	fmt.Println(result)
+	result, ok := evaluator.Evaluate(src)
+	if !ok {
+		fmt.Printf("could not interpret `%s` due to previous errors.\n", inputFile)
+	} else {
+		fmt.Println(result)
+	}
 }

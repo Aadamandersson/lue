@@ -1,6 +1,10 @@
 package token
 
-import "strconv"
+import (
+	"strconv"
+
+	"github.com/aadamandersson/lue/internal/span"
+)
 
 type Kind int
 
@@ -60,10 +64,11 @@ func (k Kind) Ok() bool {
 type Token struct {
 	Kind Kind
 	Lit  string // Literal value of token if kind is `Unknown` or `Number`, otherwise empty.
+	Sp   span.Span
 }
 
-func New(kind Kind, lit string) Token {
-	return Token{Kind: kind, Lit: lit}
+func New(kind Kind, lit string, span span.Span) Token {
+	return Token{Kind: kind, Lit: lit, Sp: span}
 }
 
 // Is returns true if this token kind is equal to k, otherwise false.

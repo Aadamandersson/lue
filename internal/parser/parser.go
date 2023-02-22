@@ -2,25 +2,27 @@ package parser
 
 import (
 	"github.com/aadamandersson/lue/internal/ast"
+	"github.com/aadamandersson/lue/internal/diagnostic"
 	"github.com/aadamandersson/lue/internal/lexer"
 	"github.com/aadamandersson/lue/internal/token"
 )
 
-func Parse(src []byte) ast.Expr {
+func Parse(src []byte, diags *diagnostic.Bag) ast.Expr {
 	tokens := lexer.Lex(src)
-	p := new(tokens)
+	p := new(diags, tokens)
 	return p.parse()
 }
 
 type parser struct {
+	diags    *diagnostic.Bag
 	tokens   []token.Token
 	tok      token.Token
 	prev_tok token.Token
 	pos      int
 }
 
-func new(tokens []token.Token) parser {
-	p := parser{tokens: tokens}
+func new(diags *diagnostic.Bag, tokens []token.Token) parser {
+	p := parser{diags: diags, tokens: tokens}
 	p.next()
 	return p
 }
@@ -49,7 +51,7 @@ func (p *parser) parsePrecExpr(min_prec int) ast.Expr {
 		}
 
 		rhs := p.parsePrecExpr(prec)
-		switch op {
+		switch op.Kind {
 		case ast.Assign:
 			ident := expr.(*ast.Ident)
 			expr = &ast.AssignExpr{Ident: ident, Init: rhs}
@@ -63,19 +65,19 @@ func (p *parser) parsePrecExpr(min_prec int) ast.Expr {
 
 func (p *parser) parsePrimaryExpr() ast.Expr {
 	if ok := p.eat(token.Ident); ok {
-		return &ast.Ident{Name: p.prev_tok.Lit}
+		return &ast.Ident{Name: p.prev_tok.Lit, Sp: p.prev_tok.Sp}
 	}
 
 	if ok := p.eat(token.Number); ok {
-		return &ast.IntegerLiteral{V: p.prev_tok.Lit}
+		return &ast.IntegerLiteral{V: p.prev_tok.Lit, Sp: p.prev_tok.Sp}
 	}
 
 	if ok := p.eat(token.False); ok {
-		return &ast.BooleanLiteral{V: false}
+		return &ast.BooleanLiteral{V: false, Sp: p.prev_tok.Sp}
 	}
 
 	if ok := p.eat(token.True); ok {
-		return &ast.BooleanLiteral{V: true}
+		return &ast.BooleanLiteral{V: true, Sp: p.prev_tok.Sp}
 	}
 
 	return nil

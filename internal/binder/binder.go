@@ -6,19 +6,25 @@ import (
 
 	"github.com/aadamandersson/lue/internal/ast"
 	"github.com/aadamandersson/lue/internal/bir"
+	"github.com/aadamandersson/lue/internal/diagnostic"
+	"github.com/aadamandersson/lue/internal/span"
 )
 
-func Bind(expr ast.Expr) bir.Expr {
-	b := new()
+func Bind(expr ast.Expr, diags *diagnostic.Bag) bir.Expr {
+	b := new(diags)
 	return b.bind(expr)
 }
 
 type binder struct {
+	diags  *diagnostic.Bag
 	values map[string]bir.Expr
 }
 
-func new() binder {
-	return binder{values: make(map[string]bir.Expr)}
+func new(diags *diagnostic.Bag) binder {
+	return binder{
+		diags:  diags,
+		values: make(map[string]bir.Expr),
+	}
 }
 
 func (b *binder) bind(expr ast.Expr) bir.Expr {
@@ -31,14 +37,14 @@ func (b *binder) bindExpr(expr ast.Expr) bir.Expr {
 		if e, ok := b.values[expr.Name]; ok {
 			return &bir.Ident{Name: expr.Name, Ty: e.Type()}
 		}
-		fmt.Printf("could not find anything named `%s`\n", expr.Name)
+		b.error(expr.Sp, "could not find anything named `%s`\n", expr.Name)
 		return &bir.ErrExpr{}
 	case *ast.IntegerLiteral:
 		if v, err := strconv.Atoi(expr.V); err == nil {
 			return &bir.IntegerLiteral{V: v}
 		}
 
-		fmt.Printf("`%s` is not valid integer", expr.V)
+		b.error(expr.Sp, "`%s` is not valid integer", expr.V)
 		return &bir.ErrExpr{}
 	case *ast.BooleanLiteral:
 		return &bir.BooleanLiteral{V: expr.V}
@@ -53,20 +59,21 @@ func (b *binder) bindExpr(expr ast.Expr) bir.Expr {
 func (b *binder) bindBinaryExpr(expr *ast.BinaryExpr) bir.Expr {
 	x := b.bindExpr(expr.X)
 	y := b.bindExpr(expr.Y)
-	op, ok := bir.BindBinOp(expr.Op, x.Type(), y.Type())
+	op, ok := bir.BindBinOp(expr.Op.Kind, x.Type(), y.Type())
 
 	if !ok {
-		switch expr.Op {
+		sp := expr.Op.Sp
+		switch expr.Op.Kind {
 		case ast.Add:
-			fmt.Printf("cannot add `%s` to `%s`\n", x.Type(), y.Type())
+			b.error(sp, "cannot add `%s` to `%s`\n", x.Type(), y.Type())
 		case ast.Sub:
-			fmt.Printf("cannot subtract `%s` from `%s`\n", y.Type(), x.Type())
+			b.error(sp, "cannot subtract `%s` from `%s`\n", y.Type(), x.Type())
 		case ast.Mul:
-			fmt.Printf("cannot multiply `%s` by `%s`\n", x.Type(), y.Type())
+			b.error(sp, "cannot multiply `%s` by `%s`\n", x.Type(), y.Type())
 		case ast.Div:
-			fmt.Printf("cannot divide `%s` by `%s`\n", x.Type(), y.Type())
+			b.error(sp, "cannot divide `%s` by `%s`\n", x.Type(), y.Type())
 		case ast.Gt, ast.Lt, ast.Ge, ast.Le, ast.Eq, ast.Ne:
-			fmt.Printf("cannot compare `%s` with `%s`\n", x.Type(), y.Type())
+			b.error(sp, "cannot compare `%s` with `%s`\n", x.Type(), y.Type())
 		default:
 			panic("unreachable")
 		}
@@ -80,4 +87,9 @@ func (b *binder) bindAssignExpr(expr *ast.AssignExpr) bir.Expr {
 	init := b.bindExpr(expr.Init)
 	b.values[expr.Ident.Name] = init
 	return &bir.AssignExpr{Ident: &bir.Ident{Name: expr.Ident.Name, Ty: init.Type()}, Init: init}
+}
+
+func (b *binder) error(span span.Span, format string, a ...any) {
+	msg := fmt.Sprintf(format, a...)
+	diagnostic.NewBuilder(msg, span).WithLabel("here").Emit(b.diags)
 }

@@ -3,6 +3,7 @@ package lexer
 import (
 	"testing"
 
+	"github.com/aadamandersson/lue/internal/span"
 	"github.com/aadamandersson/lue/internal/token"
 )
 
@@ -10,28 +11,29 @@ var cases = []struct {
 	in   string
 	want token.Token
 }{
-	{"", token.New(token.Eof, "")},
-	{" ", token.New(token.Eof, "")},
-	{"\t", token.New(token.Eof, "")},
-	{"\r", token.New(token.Eof, "")},
-	{"\r\n", token.New(token.Eof, "")},
-	{"foo", token.New(token.Ident, "foo")},
-	{"_foo", token.New(token.Ident, "_foo")},
-	{"foo123", token.New(token.Ident, "foo123")},
-	{"123", token.New(token.Number, "123")},
-	{"+", token.New(token.Plus, "")},
-	{"-", token.New(token.Minus, "")},
-	{"*", token.New(token.Star, "")},
-	{"/", token.New(token.Slash, "")},
-	{"=", token.New(token.Eq, "")},
-	{">", token.New(token.Gt, "")},
-	{"<", token.New(token.Lt, "")},
-	{">=", token.New(token.Ge, "")},
-	{"<=", token.New(token.Le, "")},
-	{"==", token.New(token.EqEq, "")},
-	{"!=", token.New(token.Ne, "")},
-	{"false", token.New(token.False, "false")},
-	{"true", token.New(token.True, "true")},
+	{"", token.New(token.Eof, "", span.NewEmpty(0))},
+	{" ", token.New(token.Eof, "", span.NewEmpty(1))},
+	{"\t", token.New(token.Eof, "", span.NewEmpty(1))},
+	{"\r", token.New(token.Eof, "", span.NewEmpty(1))},
+	{"\n", token.New(token.Eof, "", span.NewEmpty(1))},
+	{"\r\n", token.New(token.Eof, "", span.NewEmpty(2))},
+	{"foo", token.New(token.Ident, "foo", span.New(0, 3))},
+	{"_foo", token.New(token.Ident, "_foo", span.New(0, 4))},
+	{"foo123", token.New(token.Ident, "foo123", span.New(0, 6))},
+	{"123", token.New(token.Number, "123", span.New(0, 3))},
+	{"+", token.New(token.Plus, "", span.New(0, 1))},
+	{"-", token.New(token.Minus, "", span.New(0, 1))},
+	{"*", token.New(token.Star, "", span.New(0, 1))},
+	{"/", token.New(token.Slash, "", span.New(0, 1))},
+	{"=", token.New(token.Eq, "", span.New(0, 1))},
+	{">", token.New(token.Gt, "", span.New(0, 1))},
+	{"<", token.New(token.Lt, "", span.New(0, 1))},
+	{">=", token.New(token.Ge, "", span.New(0, 2))},
+	{"<=", token.New(token.Le, "", span.New(0, 2))},
+	{"==", token.New(token.EqEq, "", span.New(0, 2))},
+	{"!=", token.New(token.Ne, "", span.New(0, 2))},
+	{"false", token.New(token.False, "false", span.New(0, 5))},
+	{"true", token.New(token.True, "true", span.New(0, 4))},
 }
 
 func TestLex(t *testing.T) {
