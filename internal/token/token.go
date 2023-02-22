@@ -14,6 +14,8 @@ const (
 	Star                // `*`
 	Slash               // `/`
 	Eq                  // `=`
+	False               // `false`
+	True                // `true`
 	end
 )
 
@@ -27,6 +29,8 @@ var tokens = [...]string{
 	Star:    "*",
 	Slash:   "/",
 	Eq:      "=",
+	False:   "false",
+	True:    "true",
 }
 
 func (k Kind) String() string {
@@ -63,4 +67,17 @@ func (t Token) IsOneOf(ks ...Kind) bool {
 		}
 	}
 	return false
+}
+
+var keywords = map[string]Kind{
+	"false": False,
+	"true":  True,
+}
+
+// Lookup returns the associated token kind for ident.
+func Lookup(ident string) Kind {
+	if kw, is_kw := keywords[ident]; is_kw {
+		return kw
+	}
+	return Ident
 }

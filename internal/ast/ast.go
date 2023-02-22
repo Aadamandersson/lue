@@ -25,6 +25,12 @@ type (
 		V string
 	}
 
+	// A boolean literal.
+	// `true` or `false`
+	BooleanLiteral struct {
+		V bool
+	}
+
 	// A binary expression.
 	// E.g., `x + y`
 	BinaryExpr struct {
@@ -44,6 +50,7 @@ type (
 // Ensure that we can only assign expression nodes to an Expr.
 func (*Ident) exprNode()          {}
 func (*IntegerLiteral) exprNode() {}
+func (*BooleanLiteral) exprNode() {}
 func (*BinaryExpr) exprNode()     {}
 func (*AssignExpr) exprNode()     {}
 

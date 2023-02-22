@@ -26,6 +26,12 @@ type (
 		V int
 	}
 
+	// A boolean literal.
+	// `true` or `false`
+	BooleanLiteral struct {
+		V bool
+	}
+
 	// A binary expression.
 	// E.g., `x + y`
 	BinaryExpr struct {
@@ -48,6 +54,7 @@ type (
 // Ensure that we can only assign expression nodes to an Expr.
 func (*Ident) exprNode()          {}
 func (*IntegerLiteral) exprNode() {}
+func (*BooleanLiteral) exprNode() {}
 func (*BinaryExpr) exprNode()     {}
 func (*AssignExpr) exprNode()     {}
 func (*ErrExpr) exprNode()        {}
@@ -58,6 +65,10 @@ func (i *Ident) Type() Ty {
 
 func (il *IntegerLiteral) Type() Ty {
 	return TInt
+}
+
+func (il *BooleanLiteral) Type() Ty {
+	return TBool
 }
 
 func (be *BinaryExpr) Type() Ty {
@@ -77,11 +88,13 @@ type Ty int
 const (
 	TErr Ty = iota
 	TInt
+	TBool
 )
 
 var tys = [...]string{
-	TErr: "?",
-	TInt: "int",
+	TErr:  "?",
+	TInt:  "int",
+	TBool: "bool",
 }
 
 func (t Ty) String() string {

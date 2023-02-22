@@ -40,6 +40,8 @@ func (b *binder) bindExpr(expr ast.Expr) bir.Expr {
 
 		fmt.Printf("`%s` is not valid integer", expr.V)
 		return &bir.ErrExpr{}
+	case *ast.BooleanLiteral:
+		return &bir.BooleanLiteral{V: expr.V}
 	case *ast.BinaryExpr:
 		return b.bindBinaryExpr(expr)
 	case *ast.AssignExpr:

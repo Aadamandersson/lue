@@ -70,6 +70,14 @@ func (p *parser) parsePrimaryExpr() ast.Expr {
 		return &ast.IntegerLiteral{V: p.prev_tok.Lit}
 	}
 
+	if ok := p.eat(token.False); ok {
+		return &ast.BooleanLiteral{V: false}
+	}
+
+	if ok := p.eat(token.True); ok {
+		return &ast.BooleanLiteral{V: true}
+	}
+
 	return nil
 }
 

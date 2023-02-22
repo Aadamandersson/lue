@@ -24,6 +24,8 @@ var cases = []struct {
 	{"*", token.New(token.Star, "")},
 	{"/", token.New(token.Slash, "")},
 	{"=", token.New(token.Eq, "")},
+	{"false", token.New(token.False, "false")},
+	{"true", token.New(token.True, "true")},
 }
 
 func TestLex(t *testing.T) {

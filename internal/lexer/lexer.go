@@ -67,7 +67,7 @@ func (l *lexer) lexNumeric(first byte) (token.Kind, string) {
 
 func (l *lexer) lexIdent(first byte) (token.Kind, string) {
 	s := l.collectString(first, isIdentCont)
-	return token.Ident, s
+	return token.Lookup(s), s
 }
 
 // collectString collects bytes into a string while matches returns true and
