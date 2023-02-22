@@ -52,6 +52,8 @@ func (b *binder) bindExpr(expr ast.Expr) bir.Expr {
 		return b.bindBinaryExpr(expr)
 	case *ast.AssignExpr:
 		return b.bindAssignExpr(expr)
+	case *ast.BlockExpr:
+		return b.bindBlockExpr(expr)
 	}
 	panic("unreachable")
 }
@@ -87,6 +89,14 @@ func (b *binder) bindAssignExpr(expr *ast.AssignExpr) bir.Expr {
 	init := b.bindExpr(expr.Init)
 	b.values[expr.Ident.Name] = init
 	return &bir.AssignExpr{Ident: &bir.Ident{Name: expr.Ident.Name, Ty: init.Type()}, Init: init}
+}
+
+func (b *binder) bindBlockExpr(expr *ast.BlockExpr) bir.Expr {
+	var exprs []bir.Expr
+	for _, e := range expr.Exprs {
+		exprs = append(exprs, b.bindExpr(e))
+	}
+	return &bir.BlockExpr{Exprs: exprs}
 }
 
 func (b *binder) error(span span.Span, format string, a ...any) {

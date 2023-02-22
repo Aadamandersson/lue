@@ -47,6 +47,12 @@ type (
 		Init  Expr
 	}
 
+	// A block expression.
+	// `{ exprs }`
+	BlockExpr struct {
+		Exprs []Expr
+	}
+
 	// Placeholder when we have some bind error.
 	ErrExpr struct{}
 )
@@ -57,6 +63,7 @@ func (*IntegerLiteral) exprNode() {}
 func (*BooleanLiteral) exprNode() {}
 func (*BinaryExpr) exprNode()     {}
 func (*AssignExpr) exprNode()     {}
+func (*BlockExpr) exprNode()      {}
 func (*ErrExpr) exprNode()        {}
 
 func (i *Ident) Type() Ty {
@@ -79,6 +86,13 @@ func (ae *AssignExpr) Type() Ty {
 	return ae.Init.Type()
 }
 
+func (be *BlockExpr) Type() Ty {
+	if len(be.Exprs) == 0 {
+		return TUnit
+	}
+	return be.Exprs[len(be.Exprs)-1].Type()
+}
+
 func (ee *ErrExpr) Type() Ty {
 	return TErr
 }
@@ -89,6 +103,7 @@ const (
 	TErr Ty = iota
 	TInt
 	TBool
+	TUnit
 )
 
 var tys = [...]string{

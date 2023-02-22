@@ -81,6 +81,8 @@ func (e *evaluator) evalExpr(expr bir.Expr) (Value, bool) {
 		return e.evalBinaryExpr(expr)
 	case *bir.AssignExpr:
 		return e.evalAssignExpr(expr)
+	case *bir.BlockExpr:
+		return e.evalBlockExpr(expr)
 	case *bir.ErrExpr:
 		return nil, false
 	}
@@ -142,4 +144,16 @@ func (e *evaluator) evalAssignExpr(expr *bir.AssignExpr) (Value, bool) {
 	}
 	e.locals[expr.Ident.Name] = init
 	return Unit{}, true
+}
+
+func (e *evaluator) evalBlockExpr(block *bir.BlockExpr) (Value, bool) {
+	var lastVal Value
+	for _, expr := range block.Exprs {
+		value, ok := e.evalExpr(expr)
+		if !ok {
+			return nil, ok
+		}
+		lastVal = value
+	}
+	return lastVal, true
 }

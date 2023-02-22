@@ -49,6 +49,12 @@ type (
 		Ident *Ident // FIXME: change to expr when we support let bindings.
 		Init  Expr
 	}
+
+	// A block expression.
+	// `{ exprs }`
+	BlockExpr struct {
+		Exprs []Expr
+	}
 )
 
 // Ensure that we can only assign expression nodes to an Expr.
@@ -57,6 +63,7 @@ func (*IntegerLiteral) exprNode() {}
 func (*BooleanLiteral) exprNode() {}
 func (*BinaryExpr) exprNode()     {}
 func (*AssignExpr) exprNode()     {}
+func (*BlockExpr) exprNode()      {}
 
 type BinOp struct {
 	Kind BinOpKind

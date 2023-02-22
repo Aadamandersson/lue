@@ -28,7 +28,11 @@ func new(diags *diagnostic.Bag, tokens []token.Token) parser {
 }
 
 func (p *parser) parse() ast.Expr {
-	return p.parseExpr()
+	var exprs []ast.Expr
+	for !p.tok.Is(token.Eof) {
+		exprs = append(exprs, p.parseExpr())
+	}
+	return &ast.BlockExpr{Exprs: exprs}
 }
 
 func (p *parser) parseExpr() ast.Expr {
