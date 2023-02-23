@@ -1,6 +1,7 @@
 
 
-a = 1 + 2
-b = a + true
-c = a + c
+// some comment
+a = 1 + 2 // another comment
+b = a + 3
+c = a + b
 c

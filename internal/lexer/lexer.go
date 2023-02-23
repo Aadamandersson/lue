@@ -24,13 +24,18 @@ func (l *lexer) Lex() []token.Token {
 		if b == 0 {
 			break
 		}
+
 		if isWhitespace(b) {
-			l.eatWhitespace()
+			l.eatWhile(isWhitespace)
 			continue
 		}
 
 		start := l.pos
 		l.next()
+		if b == '/' && l.peek() == '/' {
+			l.eatWhile(func(b byte) bool { return b != '\n' })
+			continue
+		}
 		kind, lit := l.lexToken(b)
 		tokens = append(tokens, token.New(kind, lit, span.New(start, l.pos)))
 	}
@@ -130,11 +135,16 @@ func (l *lexer) next() {
 	}
 }
 
-// eatWhitespace advances the lexer to the next non-whitespace byte in src.
-func (l *lexer) eatWhitespace() {
-	for isWhitespace(l.peek()) {
+// eatWhile eats bytes while matches returns true and the lexer is not at EOF.
+func (l *lexer) eatWhile(matches func(byte) bool) {
+	for matches(l.peek()) && !l.isEof() {
 		l.next()
 	}
+}
+
+// isEof returns true if the lexer is at EOF, otherwise false.
+func (l *lexer) isEof() bool {
+	return l.pos == len(l.src)
 }
 
 // isDigit returns true if byte b is a digit, otherwise false.

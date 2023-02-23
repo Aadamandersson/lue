@@ -17,6 +17,7 @@ var cases = []struct {
 	{"\r", token.New(token.Eof, "", span.NewEmpty(1))},
 	{"\n", token.New(token.Eof, "", span.NewEmpty(1))},
 	{"\r\n", token.New(token.Eof, "", span.NewEmpty(2))},
+	{"// some comment", token.New(token.Eof, "", span.New(15, 15))},
 	{"foo", token.New(token.Ident, "foo", span.New(0, 3))},
 	{"_foo", token.New(token.Ident, "_foo", span.New(0, 4))},
 	{"foo123", token.New(token.Ident, "foo123", span.New(0, 6))},
@@ -40,7 +41,7 @@ func TestLex(t *testing.T) {
 	for _, c := range cases {
 		got := Lex([]byte(c.in))[0]
 		if got != c.want {
-			t.Errorf("Lex(\"%s\") = %#v, want %#v\n", c.in, got, c.want)
+			t.Errorf("Lex(\"%s\") = %+v, want %+v\n", c.in, got, c.want)
 		}
 	}
 }
