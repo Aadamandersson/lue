@@ -54,6 +54,14 @@ type (
 		Y Expr
 	}
 
+	// An if expression.
+	// `if cond { exprs } [else [if cond] { exprs }]`
+	IfExpr struct {
+		Cond Expr
+		Then Expr
+		Else Expr // Optional, may be nil.
+	}
+
 	// A block expression.
 	// `{ exprs }`
 	BlockExpr struct {
@@ -71,43 +79,24 @@ func (*BooleanLiteral) exprNode() {}
 func (*BinaryExpr) exprNode()     {}
 func (*LetExpr) exprNode()        {}
 func (*AssignExpr) exprNode()     {}
+func (*IfExpr) exprNode()         {}
 func (*BlockExpr) exprNode()      {}
 func (*ErrExpr) exprNode()        {}
 
-func (i *Ident) Type() Ty {
-	return i.Ty
-}
-
-func (il *IntegerLiteral) Type() Ty {
-	return TInt
-}
-
-func (il *BooleanLiteral) Type() Ty {
-	return TBool
-}
-
-func (be *BinaryExpr) Type() Ty {
-	return be.Op.Ty
-}
-
-func (le *LetExpr) Type() Ty {
-	return le.Init.Type()
-}
-
-func (ae *AssignExpr) Type() Ty {
-	return ae.Y.Type()
-}
-
-func (be *BlockExpr) Type() Ty {
-	if len(be.Exprs) == 0 {
+func (e *Ident) Type() Ty          { return e.Ty }
+func (e *IntegerLiteral) Type() Ty { return TInt }
+func (e *BooleanLiteral) Type() Ty { return TBool }
+func (e *BinaryExpr) Type() Ty     { return e.Op.Ty }
+func (e *LetExpr) Type() Ty        { return e.Init.Type() }
+func (e *AssignExpr) Type() Ty     { return e.Y.Type() }
+func (e *IfExpr) Type() Ty         { return e.Then.Type() }
+func (e *BlockExpr) Type() Ty {
+	if len(e.Exprs) == 0 {
 		return TUnit
 	}
-	return be.Exprs[len(be.Exprs)-1].Type()
+	return e.Exprs[len(e.Exprs)-1].Type()
 }
-
-func (ee *ErrExpr) Type() Ty {
-	return TErr
-}
+func (e *ErrExpr) Type() Ty { return TErr }
 
 type Ty int
 

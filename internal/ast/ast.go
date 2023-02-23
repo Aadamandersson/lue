@@ -61,6 +61,15 @@ type (
 		Sp span.Span
 	}
 
+	// An if expression.
+	// `if cond { exprs } [else [if cond] { exprs }]`
+	IfExpr struct {
+		Cond Expr
+		Then Expr
+		Else Expr // Optional, may be nil.
+		Sp   span.Span
+	}
+
 	// A block expression.
 	// `{ exprs }`
 	BlockExpr struct {
@@ -81,40 +90,19 @@ func (*BooleanLiteral) exprNode() {}
 func (*BinaryExpr) exprNode()     {}
 func (*LetExpr) exprNode()        {}
 func (*AssignExpr) exprNode()     {}
+func (*IfExpr) exprNode()         {}
 func (*BlockExpr) exprNode()      {}
 func (*ErrExpr) exprNode()        {}
 
-func (e *Ident) Span() span.Span {
-	return e.Sp
-}
-
-func (e *IntegerLiteral) Span() span.Span {
-	return e.Sp
-}
-
-func (e *BooleanLiteral) Span() span.Span {
-	return e.Sp
-}
-
-func (e *BinaryExpr) Span() span.Span {
-	return e.Sp
-}
-
-func (e *LetExpr) Span() span.Span {
-	return e.Sp
-}
-
-func (e *AssignExpr) Span() span.Span {
-	return e.Sp
-}
-
-func (e *BlockExpr) Span() span.Span {
-	return e.Sp
-}
-
-func (e *ErrExpr) Span() span.Span {
-	return e.Sp
-}
+func (e *Ident) Span() span.Span          { return e.Sp }
+func (e *IntegerLiteral) Span() span.Span { return e.Sp }
+func (e *BooleanLiteral) Span() span.Span { return e.Sp }
+func (e *BinaryExpr) Span() span.Span     { return e.Sp }
+func (e *LetExpr) Span() span.Span        { return e.Sp }
+func (e *AssignExpr) Span() span.Span     { return e.Sp }
+func (e *IfExpr) Span() span.Span         { return e.Sp }
+func (e *BlockExpr) Span() span.Span      { return e.Sp }
+func (e *ErrExpr) Span() span.Span        { return e.Sp }
 
 type BinOp struct {
 	Kind BinOpKind

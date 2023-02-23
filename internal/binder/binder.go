@@ -54,6 +54,8 @@ func (b *binder) bindExpr(expr ast.Expr) bir.Expr {
 		return b.bindLetExpr(expr)
 	case *ast.AssignExpr:
 		return b.bindAssignExpr(expr)
+	case *ast.IfExpr:
+		return b.bindIfExpr(expr)
 	case *ast.BlockExpr:
 		return b.bindBlockExpr(expr)
 	case *ast.ErrExpr:
@@ -114,6 +116,29 @@ func (b *binder) bindAssignExpr(expr *ast.AssignExpr) bir.Expr {
 		b.error(expr.X.Span(), "can only assign to identifiers for now")
 		return &bir.ErrExpr{}
 	}
+}
+
+func (b *binder) bindIfExpr(expr *ast.IfExpr) bir.Expr {
+	cond := b.bindExpr(expr.Cond)
+	if cond.Type() != bir.TBool {
+		b.error(expr.Cond.Span(), "expected `bool`, but got %s", cond.Type())
+		return &bir.ErrExpr{}
+	}
+
+	then := b.bindExpr(expr.Then)
+	var els bir.Expr
+	if expr.Else != nil {
+		els = b.bindExpr(expr.Else)
+		if then.Type() != els.Type() {
+			b.error(
+				expr.Span(),
+				"`if` and else have incompatible types, expected `%s`, but got `%s`",
+				then.Type(),
+				els.Type(),
+			)
+		}
+	}
+	return &bir.IfExpr{Cond: cond, Then: then, Else: els}
 }
 
 func (b *binder) bindBlockExpr(expr *ast.BlockExpr) bir.Expr {

@@ -76,7 +76,7 @@ func (p *parser) parseLetExpr(let_sp span.Span) ast.Expr {
 }
 
 func (p *parser) parsePrecExpr(min_prec int) ast.Expr {
-	expr := p.parsePrimaryExpr()
+	expr := p.parseBotExpr()
 
 	for {
 		op, ok := ast.BinOpFromToken(p.tok)
@@ -103,7 +103,11 @@ func (p *parser) parsePrecExpr(min_prec int) ast.Expr {
 	return expr
 }
 
-func (p *parser) parsePrimaryExpr() ast.Expr {
+func (p *parser) parseBotExpr() ast.Expr {
+	if sp, ok := p.eat(token.If); ok {
+		return p.parseIfExpr(sp)
+	}
+
 	if sp, ok := p.eat(token.Ident); ok {
 		return &ast.Ident{Name: p.prev_tok.Lit, Sp: sp}
 	}
@@ -121,6 +125,56 @@ func (p *parser) parsePrimaryExpr() ast.Expr {
 	}
 
 	return p.parseIdent()
+}
+
+// parseIfExpr parses `if cond { exprs } [else [if cond] { exprs ]`
+// `if` token already eaten.
+func (p *parser) parseIfExpr(if_sp span.Span) ast.Expr {
+	cond := p.parseExpr()
+	if cond == nil {
+		p.error("expected condition")
+	}
+
+	then := p.parseBlockExpr()
+	sp := if_sp.To(then.Span())
+	var els ast.Expr
+	if _, ok := p.eat(token.Else); ok {
+		els = p.parseElseExpr()
+		sp = if_sp.To(els.Span())
+	}
+	return &ast.IfExpr{Cond: cond, Then: then, Else: els, Sp: sp}
+}
+
+// parseElseExpr parses `else [if cond] { exprs }`.
+// `else` token already eaten.
+func (p *parser) parseElseExpr() ast.Expr {
+	if if_sp, ok := p.eat(token.If); ok {
+		return p.parseIfExpr(if_sp)
+	}
+	return p.parseBlockExpr()
+}
+
+// parseBlockExpr parses `{ exprs }`
+func (p *parser) parseBlockExpr() ast.Expr {
+	open_sp, ok := p.eat(token.LBrace)
+	if !ok {
+		p.error("expected opening delimiter `%s`", token.LBrace)
+		return &ast.ErrExpr{}
+	}
+
+	var exprs []ast.Expr
+	for !p.tok.IsOneOf(token.RBrace, token.Eof) {
+		exprs = append(exprs, p.parseExpr())
+	}
+
+	close_sp, ok := p.eat(token.RBrace)
+	if !ok {
+		p.error("expected closing delimiter `%s`", token.LBrace)
+		return &ast.ErrExpr{}
+	}
+
+	sp := open_sp.To(close_sp)
+	return &ast.BlockExpr{Exprs: exprs, Sp: sp}
 }
 
 func (p *parser) parseIdent() *ast.Ident {

@@ -24,7 +24,11 @@ const (
 	Le                  // `<=`
 	EqEq                // `==`
 	Ne                  // `!=`
+	LBrace              // `{`
+	RBrace              // `}`
+	Else                // `else`
 	False               // `false`
+	If                  // `if`
 	Let                 // `let`
 	True                // `true`
 	end
@@ -46,7 +50,11 @@ var tokens = [...]string{
 	Le:      ">=",
 	EqEq:    "==",
 	Ne:      "!=",
+	LBrace:  "{",
+	RBrace:  "}",
+	Else:    "else",
 	False:   "false",
+	If:      "if",
 	Let:     "let",
 	True:    "true",
 }
@@ -89,7 +97,9 @@ func (t Token) IsOneOf(ks ...Kind) bool {
 }
 
 var keywords = map[string]Kind{
+	"else":  Else,
 	"false": False,
+	"if":    If,
 	"let":   Let,
 	"true":  True,
 }

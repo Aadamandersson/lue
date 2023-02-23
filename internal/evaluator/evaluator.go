@@ -82,6 +82,8 @@ func (e *evaluator) evalExpr(expr bir.Expr) (Value, bool) {
 		return e.evalLetExpr(expr)
 	case *bir.AssignExpr:
 		return e.evalAssignExpr(expr)
+	case *bir.IfExpr:
+		return e.evalIfExpr(expr)
 	case *bir.BlockExpr:
 		return e.evalBlockExpr(expr)
 	case *bir.ErrExpr:
@@ -156,6 +158,31 @@ func (e *evaluator) evalAssignExpr(expr *bir.AssignExpr) (Value, bool) {
 	// but eventually we want to support more types.
 	ident := expr.X.(*bir.Ident)
 	e.locals[ident.Name] = v
+	return Unit{}, true
+}
+
+func (e *evaluator) evalIfExpr(expr *bir.IfExpr) (Value, bool) {
+	cond, ok := e.evalExpr(expr.Cond)
+	if !ok {
+		return nil, ok
+	}
+
+	if cond.(Boolean) {
+		v, ok := e.evalExpr(expr.Then)
+		if !ok {
+			return nil, ok
+		}
+		return v, true
+	}
+
+	if expr.Else != nil {
+		v, ok := e.evalExpr(expr.Else)
+		if !ok {
+			return nil, ok
+		}
+		return v, true
+	}
+
 	return Unit{}, true
 }
 
