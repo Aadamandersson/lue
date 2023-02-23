@@ -86,8 +86,7 @@ func (p *parser) parsePrecExpr(min_prec int) ast.Expr {
 		rhs := p.parsePrecExpr(prec)
 		switch op.Kind {
 		case ast.Assign:
-			ident := expr.(*ast.Ident)
-			expr = &ast.AssignExpr{Ident: ident, Init: rhs}
+			expr = &ast.AssignExpr{X: expr, Y: rhs}
 		default:
 			expr = &ast.BinaryExpr{X: expr, Op: op, Y: rhs}
 		}

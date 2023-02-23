@@ -48,10 +48,10 @@ type (
 	}
 
 	// An assignment expression.
-	// `expr = init`
+	// `x = y`
 	AssignExpr struct {
-		Ident *Ident // FIXME: change to expr when we support let bindings.
-		Init  Expr
+		X Expr
+		Y Expr
 	}
 
 	// A block expression.
@@ -95,7 +95,7 @@ func (le *LetExpr) Type() Ty {
 }
 
 func (ae *AssignExpr) Type() Ty {
-	return ae.Init.Type()
+	return ae.Y.Type()
 }
 
 func (be *BlockExpr) Type() Ty {

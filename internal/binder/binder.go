@@ -97,9 +97,25 @@ func (b *binder) bindLetExpr(expr *ast.LetExpr) bir.Expr {
 }
 
 func (b *binder) bindAssignExpr(expr *ast.AssignExpr) bir.Expr {
-	init := b.bindExpr(expr.Init)
-	b.values[expr.Ident.Name] = init
-	return &bir.AssignExpr{Ident: &bir.Ident{Name: expr.Ident.Name, Ty: init.Type()}, Init: init}
+	x := b.bindExpr(expr.X)
+	y := b.bindExpr(expr.Y)
+	switch x := x.(type) {
+	case *bir.Ident:
+		if v, ok := b.values[x.Name]; ok {
+			if v.Type() != y.Type() {
+				// FIXME: span
+				b.error(span.New(0, 0), "expected `%s`, but got `%s`", v.Type(), y.Type())
+				return &bir.ErrExpr{}
+			} else {
+				b.values[x.Name] = y
+			}
+		}
+		return &bir.AssignExpr{X: &bir.Ident{Name: x.Name, Ty: y.Type()}, Y: y}
+	default:
+		span := expr.X.(*ast.Ident).Sp // FIXME: add spans to `ast.Expr`
+		b.error(span, "can only assign to identifiers for now")
+		return &bir.ErrExpr{}
+	}
 }
 
 func (b *binder) bindBlockExpr(expr *ast.BlockExpr) bir.Expr {

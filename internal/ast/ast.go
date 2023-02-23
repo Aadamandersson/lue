@@ -51,10 +51,10 @@ type (
 	}
 
 	// An assignment expression.
-	// `expr = init`
+	// `x = y`
 	AssignExpr struct {
-		Ident *Ident // FIXME: change to expr when we support let bindings.
-		Init  Expr
+		X Expr
+		Y Expr
 	}
 
 	// A block expression.

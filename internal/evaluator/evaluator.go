@@ -139,20 +139,23 @@ func (e *evaluator) evalBinaryExpr(expr *bir.BinaryExpr) (Value, bool) {
 }
 
 func (e *evaluator) evalLetExpr(expr *bir.LetExpr) (Value, bool) {
-	init, ok := e.evalExpr(expr.Init)
+	v, ok := e.evalExpr(expr.Init)
 	if !ok {
 		return nil, ok
 	}
-	e.locals[expr.Ident.Name] = init
+	e.locals[expr.Ident.Name] = v
 	return Unit{}, true
 }
 
 func (e *evaluator) evalAssignExpr(expr *bir.AssignExpr) (Value, bool) {
-	init, ok := e.evalExpr(expr.Init)
+	v, ok := e.evalExpr(expr.Y)
 	if !ok {
 		return nil, ok
 	}
-	e.locals[expr.Ident.Name] = init
+	// TODO: we ensure in the binder that this will always be an Ident for now,
+	// but eventually we want to support more types.
+	ident := expr.X.(*bir.Ident)
+	e.locals[ident.Name] = v
 	return Unit{}, true
 }
 
