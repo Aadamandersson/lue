@@ -9,6 +9,7 @@ import (
 
 type (
 	Bag struct {
+		file  *span.SourceFile
 		diags []*Diagnostic
 	}
 
@@ -30,8 +31,8 @@ type (
 	}
 )
 
-func NewBag() *Bag {
-	return &Bag{diags: make([]*Diagnostic, 0)}
+func NewBag(file *span.SourceFile) *Bag {
+	return &Bag{file: file, diags: make([]*Diagnostic, 0)}
 }
 
 func (b *Bag) Empty() bool {
@@ -46,24 +47,23 @@ func (b *Bag) ForEach(f func(*Diagnostic) bool) {
 	}
 }
 
-func (b *Bag) Dump(filename string, src []byte) {
+func (b *Bag) Dump() {
 	var builder strings.Builder
-	lines := lines(src)
 	indent := func() { builder.WriteString(strings.Repeat(" ", 4)) }
 	for _, d := range b.diags {
 		builder.WriteByte('\n')
 		errStr := fmt.Sprintf("error: %s\n", d.Msg)
 		builder.WriteString(errStr)
-		lineIdx := lineIdx(d.Span.Start, lines)
-		lineStart := lines[lineIdx]
-		lineEnd := lines[lineIdx+1]
-		col := d.Span.Start - lineStart + 1
 
-		fLoc := fmt.Sprintf("[%s:%d:%d]\n", filename, col, lineIdx+1)
+		line := b.file.Line(d.Span.Start)
+		lineStart := b.file.LinePos(line)
+		lineEnd := b.file.LinePos(line + 1)
+		col := d.Span.Start - lineStart + 1
+		fLoc := fmt.Sprintf("[%s:%d:%d]\n", b.file.Name, col, line+1)
 		builder.WriteString(fLoc)
 
 		indent()
-		errLine := src[lineStart:lineEnd]
+		errLine := b.file.LineSlice(lineStart, lineEnd)
 		builder.WriteString(string(errLine))
 		if len(d.Labels) != 0 {
 			label := d.Labels[0] // FIXME: support multiple labels (secondary ones)
@@ -78,38 +78,6 @@ func (b *Bag) Dump(filename string, src []byte) {
 	}
 
 	fmt.Println(builder.String())
-}
-
-func lines(src []byte) []int {
-	lines := []int{0}
-	cursor := 0
-	for _, b := range src {
-		if b == '\n' {
-			lines = append(lines, cursor+1)
-		}
-		cursor += 1
-	}
-	return lines
-}
-
-func lineIdx(pos int, lines []int) int {
-	lo := 0
-	hi := len(lines) - 1
-	for lo <= hi {
-		mid := (lo + hi) / 2
-		curr := lines[mid]
-
-		if curr == pos {
-			return mid
-		}
-
-		if pos > curr {
-			lo = mid + 1
-		} else {
-			hi = mid - 1
-		}
-	}
-	return lo - 1
 }
 
 func (d *Diagnostic) Emit(bag *Bag) {

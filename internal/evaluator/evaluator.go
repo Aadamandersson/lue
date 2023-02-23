@@ -7,6 +7,7 @@ import (
 	"github.com/aadamandersson/lue/internal/bir"
 	"github.com/aadamandersson/lue/internal/diagnostic"
 	"github.com/aadamandersson/lue/internal/parser"
+	"github.com/aadamandersson/lue/internal/span"
 )
 
 type Value interface {
@@ -37,14 +38,15 @@ func (u Unit) String() string {
 }
 
 func Evaluate(filename string, src []byte) (Value, bool) {
-	diags := diagnostic.NewBag()
+	file := span.NewSourceFile(filename, src)
+	diags := diagnostic.NewBag(file)
 	aExpr := parser.Parse(src, diags)
 	expr := binder.Bind(aExpr, diags)
 	e := new(diags)
 	result, ok := e.eval(expr)
 
 	if !diags.Empty() {
-		diags.Dump(filename, src)
+		diags.Dump()
 	}
 
 	return result, ok
