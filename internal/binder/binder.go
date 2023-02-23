@@ -50,10 +50,14 @@ func (b *binder) bindExpr(expr ast.Expr) bir.Expr {
 		return &bir.BooleanLiteral{V: expr.V}
 	case *ast.BinaryExpr:
 		return b.bindBinaryExpr(expr)
+	case *ast.LetExpr:
+		return b.bindLetExpr(expr)
 	case *ast.AssignExpr:
 		return b.bindAssignExpr(expr)
 	case *ast.BlockExpr:
 		return b.bindBlockExpr(expr)
+	case *ast.ErrExpr:
+		return &bir.ErrExpr{}
 	}
 	panic("unreachable")
 }
@@ -83,6 +87,13 @@ func (b *binder) bindBinaryExpr(expr *ast.BinaryExpr) bir.Expr {
 	}
 
 	return &bir.BinaryExpr{X: x, Op: op, Y: y}
+}
+
+func (b *binder) bindLetExpr(expr *ast.LetExpr) bir.Expr {
+	init := b.bindExpr(expr.Init)
+	b.values[expr.Ident.Name] = init
+	ident := &bir.Ident{Name: expr.Ident.Name, Ty: init.Type()}
+	return &bir.LetExpr{Ident: ident, Init: init}
 }
 
 func (b *binder) bindAssignExpr(expr *ast.AssignExpr) bir.Expr {

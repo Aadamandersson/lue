@@ -43,6 +43,13 @@ type (
 		Y  Expr
 	}
 
+	// A let binding.
+	// `let ident = init`
+	LetExpr struct {
+		Ident *Ident
+		Init  Expr
+	}
+
 	// An assignment expression.
 	// `expr = init`
 	AssignExpr struct {
@@ -55,6 +62,9 @@ type (
 	BlockExpr struct {
 		Exprs []Expr
 	}
+
+	// Placeholder when we have some parse error.
+	ErrExpr struct{}
 )
 
 // Ensure that we can only assign expression nodes to an Expr.
@@ -62,8 +72,10 @@ func (*Ident) exprNode()          {}
 func (*IntegerLiteral) exprNode() {}
 func (*BooleanLiteral) exprNode() {}
 func (*BinaryExpr) exprNode()     {}
+func (*LetExpr) exprNode()        {}
 func (*AssignExpr) exprNode()     {}
 func (*BlockExpr) exprNode()      {}
+func (*ErrExpr) exprNode()        {}
 
 type BinOp struct {
 	Kind BinOpKind

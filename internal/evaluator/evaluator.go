@@ -78,6 +78,8 @@ func (e *evaluator) evalExpr(expr bir.Expr) (Value, bool) {
 		return Boolean(expr.V), true
 	case *bir.BinaryExpr:
 		return e.evalBinaryExpr(expr)
+	case *bir.LetExpr:
+		return e.evalLetExpr(expr)
 	case *bir.AssignExpr:
 		return e.evalAssignExpr(expr)
 	case *bir.BlockExpr:
@@ -134,6 +136,15 @@ func (e *evaluator) evalBinaryExpr(expr *bir.BinaryExpr) (Value, bool) {
 		}
 	}
 	panic("unreachable")
+}
+
+func (e *evaluator) evalLetExpr(expr *bir.LetExpr) (Value, bool) {
+	init, ok := e.evalExpr(expr.Init)
+	if !ok {
+		return nil, ok
+	}
+	e.locals[expr.Ident.Name] = init
+	return Unit{}, true
 }
 
 func (e *evaluator) evalAssignExpr(expr *bir.AssignExpr) (Value, bool) {

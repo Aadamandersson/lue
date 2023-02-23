@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"fmt"
+
 	"github.com/aadamandersson/lue/internal/ast"
 	"github.com/aadamandersson/lue/internal/diagnostic"
 	"github.com/aadamandersson/lue/internal/lexer"
@@ -36,7 +38,34 @@ func (p *parser) parse() ast.Expr {
 }
 
 func (p *parser) parseExpr() ast.Expr {
+	if ok := p.eat(token.Let); ok {
+		return p.parseLetExpr()
+	}
 	return p.parsePrecExpr(0)
+}
+
+// parseLetExpr parses a let binding, `let` token already eaten.
+// `let ident = init`
+func (p *parser) parseLetExpr() ast.Expr {
+	ident := p.parseIdent()
+	if ident == nil {
+		p.error("expected identifier in let binding, but got `%s`", p.tok.Kind)
+	}
+
+	if ok := p.eat(token.Eq); !ok {
+		p.error("expected `=`, but got `%s`", p.tok.Kind)
+	}
+
+	init := p.parseExpr()
+	if init == nil {
+		p.error("expected expression, but got `%s`", p.tok.Kind)
+	}
+
+	if ident == nil || init == nil {
+		return &ast.ErrExpr{}
+	}
+
+	return &ast.LetExpr{Ident: ident, Init: init}
 }
 
 func (p *parser) parsePrecExpr(min_prec int) ast.Expr {
@@ -84,6 +113,13 @@ func (p *parser) parsePrimaryExpr() ast.Expr {
 		return &ast.BooleanLiteral{V: true, Sp: p.prev_tok.Sp}
 	}
 
+	return p.parseIdent()
+}
+
+func (p *parser) parseIdent() *ast.Ident {
+	if ok := p.eat(token.Ident); ok {
+		return &ast.Ident{Name: p.prev_tok.Lit, Sp: p.prev_tok.Sp}
+	}
 	return nil
 }
 
@@ -104,4 +140,9 @@ func (p *parser) next() {
 		p.tok = p.tokens[p.pos]
 		p.pos += 1
 	}
+}
+
+func (p *parser) error(format string, a ...any) {
+	msg := fmt.Sprintf(format, a...)
+	diagnostic.NewBuilder(msg, p.tok.Sp).WithLabel("here").Emit(p.diags)
 }
