@@ -9,6 +9,7 @@ import (
 )
 
 type Expr interface {
+	Span() span.Span
 	exprNode()
 }
 
@@ -41,6 +42,7 @@ type (
 		X  Expr
 		Op BinOp
 		Y  Expr
+		Sp span.Span
 	}
 
 	// A let binding.
@@ -48,23 +50,28 @@ type (
 	LetExpr struct {
 		Ident *Ident
 		Init  Expr
+		Sp    span.Span
 	}
 
 	// An assignment expression.
 	// `x = y`
 	AssignExpr struct {
-		X Expr
-		Y Expr
+		X  Expr
+		Y  Expr
+		Sp span.Span
 	}
 
 	// A block expression.
 	// `{ exprs }`
 	BlockExpr struct {
 		Exprs []Expr
+		Sp    span.Span
 	}
 
 	// Placeholder when we have some parse error.
-	ErrExpr struct{}
+	ErrExpr struct {
+		Sp span.Span
+	}
 )
 
 // Ensure that we can only assign expression nodes to an Expr.
@@ -76,6 +83,38 @@ func (*LetExpr) exprNode()        {}
 func (*AssignExpr) exprNode()     {}
 func (*BlockExpr) exprNode()      {}
 func (*ErrExpr) exprNode()        {}
+
+func (e *Ident) Span() span.Span {
+	return e.Sp
+}
+
+func (e *IntegerLiteral) Span() span.Span {
+	return e.Sp
+}
+
+func (e *BooleanLiteral) Span() span.Span {
+	return e.Sp
+}
+
+func (e *BinaryExpr) Span() span.Span {
+	return e.Sp
+}
+
+func (e *LetExpr) Span() span.Span {
+	return e.Sp
+}
+
+func (e *AssignExpr) Span() span.Span {
+	return e.Sp
+}
+
+func (e *BlockExpr) Span() span.Span {
+	return e.Sp
+}
+
+func (e *ErrExpr) Span() span.Span {
+	return e.Sp
+}
 
 type BinOp struct {
 	Kind BinOpKind

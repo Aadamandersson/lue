@@ -6,6 +6,7 @@ import (
 	"github.com/aadamandersson/lue/internal/ast"
 	"github.com/aadamandersson/lue/internal/diagnostic"
 	"github.com/aadamandersson/lue/internal/lexer"
+	"github.com/aadamandersson/lue/internal/span"
 	"github.com/aadamandersson/lue/internal/token"
 )
 
@@ -34,25 +35,30 @@ func (p *parser) parse() ast.Expr {
 	for !p.tok.Is(token.Eof) {
 		exprs = append(exprs, p.parseExpr())
 	}
-	return &ast.BlockExpr{Exprs: exprs}
+
+	sp := span.NewEmpty(0)
+	if len(exprs) > 1 {
+		sp = exprs[0].Span().To(exprs[len(exprs)-1].Span())
+	}
+	return &ast.BlockExpr{Exprs: exprs, Sp: sp}
 }
 
 func (p *parser) parseExpr() ast.Expr {
-	if ok := p.eat(token.Let); ok {
-		return p.parseLetExpr()
+	if sp, ok := p.eat(token.Let); ok {
+		return p.parseLetExpr(sp)
 	}
 	return p.parsePrecExpr(0)
 }
 
 // parseLetExpr parses a let binding, `let` token already eaten.
 // `let ident = init`
-func (p *parser) parseLetExpr() ast.Expr {
+func (p *parser) parseLetExpr(let_sp span.Span) ast.Expr {
 	ident := p.parseIdent()
 	if ident == nil {
 		p.error("expected identifier in let binding, but got `%s`", p.tok.Kind)
 	}
 
-	if ok := p.eat(token.Eq); !ok {
+	if _, ok := p.eat(token.Eq); !ok {
 		p.error("expected `=`, but got `%s`", p.tok.Kind)
 	}
 
@@ -65,7 +71,8 @@ func (p *parser) parseLetExpr() ast.Expr {
 		return &ast.ErrExpr{}
 	}
 
-	return &ast.LetExpr{Ident: ident, Init: init}
+	sp := let_sp.To(init.Span())
+	return &ast.LetExpr{Ident: ident, Init: init, Sp: sp}
 }
 
 func (p *parser) parsePrecExpr(min_prec int) ast.Expr {
@@ -84,11 +91,12 @@ func (p *parser) parsePrecExpr(min_prec int) ast.Expr {
 		}
 
 		rhs := p.parsePrecExpr(prec)
+		sp := expr.Span().To(rhs.Span())
 		switch op.Kind {
 		case ast.Assign:
-			expr = &ast.AssignExpr{X: expr, Y: rhs}
+			expr = &ast.AssignExpr{X: expr, Y: rhs, Sp: sp}
 		default:
-			expr = &ast.BinaryExpr{X: expr, Op: op, Y: rhs}
+			expr = &ast.BinaryExpr{X: expr, Op: op, Y: rhs, Sp: sp}
 		}
 	}
 
@@ -96,40 +104,41 @@ func (p *parser) parsePrecExpr(min_prec int) ast.Expr {
 }
 
 func (p *parser) parsePrimaryExpr() ast.Expr {
-	if ok := p.eat(token.Ident); ok {
-		return &ast.Ident{Name: p.prev_tok.Lit, Sp: p.prev_tok.Sp}
+	if sp, ok := p.eat(token.Ident); ok {
+		return &ast.Ident{Name: p.prev_tok.Lit, Sp: sp}
 	}
 
-	if ok := p.eat(token.Number); ok {
-		return &ast.IntegerLiteral{V: p.prev_tok.Lit, Sp: p.prev_tok.Sp}
+	if sp, ok := p.eat(token.Number); ok {
+		return &ast.IntegerLiteral{V: p.prev_tok.Lit, Sp: sp}
 	}
 
-	if ok := p.eat(token.False); ok {
-		return &ast.BooleanLiteral{V: false, Sp: p.prev_tok.Sp}
+	if sp, ok := p.eat(token.False); ok {
+		return &ast.BooleanLiteral{V: false, Sp: sp}
 	}
 
-	if ok := p.eat(token.True); ok {
-		return &ast.BooleanLiteral{V: true, Sp: p.prev_tok.Sp}
+	if sp, ok := p.eat(token.True); ok {
+		return &ast.BooleanLiteral{V: true, Sp: sp}
 	}
 
 	return p.parseIdent()
 }
 
 func (p *parser) parseIdent() *ast.Ident {
-	if ok := p.eat(token.Ident); ok {
-		return &ast.Ident{Name: p.prev_tok.Lit, Sp: p.prev_tok.Sp}
+	if sp, ok := p.eat(token.Ident); ok {
+		return &ast.Ident{Name: p.prev_tok.Lit, Sp: sp}
 	}
 	return nil
 }
 
 // eat advances the parser to the next token and returns true, if the current token kind
 // is kind k, otherwise returns false.
-func (p *parser) eat(k token.Kind) bool {
+func (p *parser) eat(k token.Kind) (span.Span, bool) {
+	sp := p.tok.Sp
 	if p.tok.Is(k) {
 		p.next()
-		return true
+		return sp, true
 	}
-	return false
+	return sp, false
 }
 
 // next advances the parser to the next token in tokens.

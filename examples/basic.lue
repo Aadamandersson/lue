@@ -2,6 +2,6 @@
 
 // some comment
 let a = 1 + 2 // another comment
-a = 4
-let b = a + 3
+1 = false
+let b = a + c
 b

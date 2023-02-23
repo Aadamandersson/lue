@@ -103,8 +103,7 @@ func (b *binder) bindAssignExpr(expr *ast.AssignExpr) bir.Expr {
 	case *bir.Ident:
 		if v, ok := b.values[x.Name]; ok {
 			if v.Type() != y.Type() {
-				// FIXME: span
-				b.error(span.New(0, 0), "expected `%s`, but got `%s`", v.Type(), y.Type())
+				b.error(expr.Y.Span(), "expected `%s`, but got `%s`", v.Type(), y.Type())
 				return &bir.ErrExpr{}
 			} else {
 				b.values[x.Name] = y
@@ -112,8 +111,7 @@ func (b *binder) bindAssignExpr(expr *ast.AssignExpr) bir.Expr {
 		}
 		return &bir.AssignExpr{X: &bir.Ident{Name: x.Name, Ty: y.Type()}, Y: y}
 	default:
-		span := expr.X.(*ast.Ident).Sp // FIXME: add spans to `ast.Expr`
-		b.error(span, "can only assign to identifiers for now")
+		b.error(expr.X.Span(), "can only assign to identifiers for now")
 		return &bir.ErrExpr{}
 	}
 }
