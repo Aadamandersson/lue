@@ -54,13 +54,15 @@ func Evaluate(filename string, src []byte) (Value, bool) {
 
 type evaluator struct {
 	diags  *diagnostic.Bag
-	locals map[string]Value
+	locals []map[string]Value
 }
 
 func new(diags *diagnostic.Bag) evaluator {
+	locals := make([]map[string]Value, 1)
+	locals = append(locals, make(map[string]Value))
 	return evaluator{
 		diags:  diags,
-		locals: make(map[string]Value),
+		locals: locals,
 	}
 }
 
@@ -71,7 +73,7 @@ func (e *evaluator) eval(expr bir.Expr) (Value, bool) {
 func (e *evaluator) evalExpr(expr bir.Expr) (Value, bool) {
 	switch expr := expr.(type) {
 	case *bir.Ident:
-		return e.locals[expr.Name], true
+		return e.locals[len(e.locals)-1][expr.Name], true
 	case *bir.IntegerLiteral:
 		return Integer(expr.V), true
 	case *bir.BooleanLiteral:
@@ -145,7 +147,7 @@ func (e *evaluator) evalLetExpr(expr *bir.LetExpr) (Value, bool) {
 	if !ok {
 		return nil, ok
 	}
-	e.locals[expr.Ident.Name] = v
+	e.locals[len(e.locals)-1][expr.Ident.Name] = v
 	return Unit{}, true
 }
 
@@ -157,7 +159,7 @@ func (e *evaluator) evalAssignExpr(expr *bir.AssignExpr) (Value, bool) {
 	// TODO: we ensure in the binder that this will always be an Ident for now,
 	// but eventually we want to support more types.
 	ident := expr.X.(*bir.Ident)
-	e.locals[ident.Name] = v
+	e.locals[len(e.locals)-1][ident.Name] = v
 	return Unit{}, true
 }
 

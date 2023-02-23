@@ -16,14 +16,14 @@ func Bind(expr ast.Expr, diags *diagnostic.Bag) bir.Expr {
 }
 
 type binder struct {
-	diags  *diagnostic.Bag
-	values map[string]bir.Expr
+	diags *diagnostic.Bag
+	scope *Scope
 }
 
 func new(diags *diagnostic.Bag) binder {
 	return binder{
-		diags:  diags,
-		values: make(map[string]bir.Expr),
+		diags: diags,
+		scope: NewScope(),
 	}
 }
 
@@ -34,8 +34,8 @@ func (b *binder) bind(expr ast.Expr) bir.Expr {
 func (b *binder) bindExpr(expr ast.Expr) bir.Expr {
 	switch expr := expr.(type) {
 	case *ast.Ident:
-		if e, ok := b.values[expr.Name]; ok {
-			return &bir.Ident{Name: expr.Name, Ty: e.Type()}
+		if v, ok := b.scope.Get(expr.Name); ok {
+			return &bir.Ident{Name: expr.Name, Ty: v.Type()}
 		}
 		b.error(expr.Sp, "could not find anything named `%s`", expr.Name)
 		return &bir.ErrExpr{}
@@ -93,7 +93,7 @@ func (b *binder) bindBinaryExpr(expr *ast.BinaryExpr) bir.Expr {
 
 func (b *binder) bindLetExpr(expr *ast.LetExpr) bir.Expr {
 	init := b.bindExpr(expr.Init)
-	b.values[expr.Ident.Name] = init
+	b.scope.Insert(expr.Ident.Name, init)
 	ident := &bir.Ident{Name: expr.Ident.Name, Ty: init.Type()}
 	return &bir.LetExpr{Ident: ident, Init: init}
 }
@@ -103,12 +103,12 @@ func (b *binder) bindAssignExpr(expr *ast.AssignExpr) bir.Expr {
 	y := b.bindExpr(expr.Y)
 	switch x := x.(type) {
 	case *bir.Ident:
-		if v, ok := b.values[x.Name]; ok {
+		if v, ok := b.scope.Get(x.Name); ok {
 			if v.Type() != y.Type() {
 				b.error(expr.Y.Span(), "expected `%s`, but got `%s`", v.Type(), y.Type())
 				return &bir.ErrExpr{}
 			} else {
-				b.values[x.Name] = y
+				b.scope.Insert(x.Name, y)
 			}
 		}
 		return &bir.AssignExpr{X: &bir.Ident{Name: x.Name, Ty: y.Type()}, Y: y}
@@ -143,9 +143,12 @@ func (b *binder) bindIfExpr(expr *ast.IfExpr) bir.Expr {
 
 func (b *binder) bindBlockExpr(expr *ast.BlockExpr) bir.Expr {
 	var exprs []bir.Expr
+	prev := b.scope
+	b.scope = WithOuter(b.scope)
 	for _, e := range expr.Exprs {
 		exprs = append(exprs, b.bindExpr(e))
 	}
+	b.scope = prev
 	return &bir.BlockExpr{Exprs: exprs}
 }
 
