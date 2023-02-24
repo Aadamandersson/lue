@@ -8,10 +8,43 @@ import (
 	"github.com/aadamandersson/lue/internal/token"
 )
 
-type Expr interface {
-	Span() span.Span
-	exprNode()
+type (
+	Item interface {
+		itemNode()
+	}
+
+	Expr interface {
+		Span() span.Span
+		exprNode()
+	}
+)
+
+// Items
+type (
+	// A function declaration.
+	// `fn ident([params]) [: ty] { exprs }`
+	FnDecl struct {
+		Ident *Ident
+		In    []*Param
+		Out   *Ident
+		Body  Expr
+		Sp    span.Span
+	}
+
+	// Placeholder when we have some parse error.
+	ErrItem struct{}
+)
+
+// A function parameter.
+// `ident: ty`
+type Param struct {
+	Ident *Ident
+	Ty    *Ident
 }
+
+// Ensure that we can only assign item nodes to an Item.
+func (*FnDecl) itemNode()  {}
+func (*ErrItem) itemNode() {}
 
 // Expressions
 type (

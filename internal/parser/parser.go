@@ -10,7 +10,7 @@ import (
 	"github.com/aadamandersson/lue/internal/token"
 )
 
-func Parse(src []byte, diags *diagnostic.Bag) ast.Expr {
+func Parse(src []byte, diags *diagnostic.Bag) []ast.Item {
 	tokens := lexer.Lex(src)
 	p := new(diags, tokens)
 	return p.parse()
@@ -30,17 +30,97 @@ func new(diags *diagnostic.Bag, tokens []token.Token) parser {
 	return p
 }
 
-func (p *parser) parse() ast.Expr {
-	var exprs []ast.Expr
+func (p *parser) parse() []ast.Item {
+	var items []ast.Item
 	for !p.tok.Is(token.Eof) {
-		exprs = append(exprs, p.parseExpr())
+		if item := p.parseItem(); item != nil {
+			items = append(items, item)
+		} else {
+			p.error("expected item")
+			p.next()
+		}
 	}
 
-	sp := span.NewEmpty(0)
-	if len(exprs) > 1 {
-		sp = exprs[0].Span().To(exprs[len(exprs)-1].Span())
+	return items
+}
+
+func (p *parser) parseItem() ast.Item {
+	if fn_span, ok := p.eat(token.Fn); ok {
+		return p.parseFnDecl(fn_span)
 	}
-	return &ast.BlockExpr{Exprs: exprs, Sp: sp}
+	return nil
+}
+
+// parseFnDecl parses a function declaration, `fn` token already eaten.
+// `fn ident([params]) [:ty] { exprs }`
+func (p *parser) parseFnDecl(fn_span span.Span) ast.Item {
+	ident := p.parseIdent()
+	if ident == nil {
+		p.error("expected function name, but got `%s`", p.tok.Kind)
+	}
+
+	params := p.parseParams()
+	if params == nil {
+		return nil
+	}
+
+	var ty *ast.Ident
+	_, has_colon := p.eat(token.Colon)
+	if has_colon {
+		ty = p.parseIdent()
+		if ty == nil {
+			p.error("expected type after `:`")
+		}
+	}
+
+	if ty == nil && has_colon {
+		return &ast.ErrItem{}
+	}
+
+	body := p.parseBlockExpr()
+	sp := fn_span.To(body.Span())
+	return &ast.FnDecl{Ident: ident, In: params, Out: ty, Body: body, Sp: sp}
+}
+
+func (p *parser) parseParams() []*ast.Param {
+	params := make([]*ast.Param, 0)
+
+	if _, ok := p.eat(token.LParen); !ok {
+		p.error("expected opening delimiter `%s`", token.LParen)
+		return nil
+	}
+
+	for !p.tok.IsOneOf(token.RParen, token.Eof) {
+		ident := p.parseIdent()
+		if ident == nil {
+			p.error("expected parameter name, but got `%s`", p.tok.Kind)
+			continue
+		}
+
+		if _, ok := p.eat(token.Colon); !ok {
+			p.error("expected `:`")
+		}
+
+		ty := p.parseIdent()
+		if ty == nil {
+			p.error("expected parameter type")
+			continue
+		}
+
+		param := &ast.Param{Ident: ident, Ty: ty}
+		params = append(params, param)
+
+		if _, ok := p.eat(token.Comma); !ok {
+			break
+		}
+	}
+
+	if _, ok := p.eat(token.RParen); !ok {
+		p.error("expected closing delimiter `%s`", token.RParen)
+		return nil
+	}
+
+	return params
 }
 
 func (p *parser) parseExpr() ast.Expr {
@@ -63,7 +143,7 @@ func (p *parser) parseLetExpr(let_sp span.Span) ast.Expr {
 	if has_colon {
 		ty = p.parseIdent()
 		if ty == nil {
-			p.error("expected a type after `:`")
+			p.error("expected type after `:`")
 		}
 	}
 

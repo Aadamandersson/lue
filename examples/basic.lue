@@ -1,8 +1,5 @@
 
 
-// some comment
-let a = 1 + 2 // another comment
-let b: int = 22 + 2
-let c = a + b
-let d: bool = 1
-d
+fn main(){
+    
+}

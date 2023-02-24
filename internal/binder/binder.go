@@ -10,9 +10,9 @@ import (
 	"github.com/aadamandersson/lue/internal/span"
 )
 
-func Bind(expr ast.Expr, diags *diagnostic.Bag) bir.Expr {
+func Bind(items []ast.Item, diags *diagnostic.Bag) []bir.Item {
 	b := new(diags)
-	return b.bind(expr)
+	return b.bind(items)
 }
 
 type binder struct {
@@ -21,23 +21,98 @@ type binder struct {
 }
 
 func new(diags *diagnostic.Bag) binder {
-	return binder{
-		diags: diags,
-		scope: NewScope(),
-	}
+	return binder{diags: diags}
 }
 
-func (b *binder) bind(expr ast.Expr) bir.Expr {
-	return b.bindExpr(expr)
+func (b *binder) bind(aItems []ast.Item) []bir.Item {
+	var items []bir.Item
+	for _, aItem := range aItems {
+		items = append(items, b.bindItem(aItem))
+	}
+	return items
+}
+
+func (b *binder) bindItem(item ast.Item) bir.Item {
+	switch item := item.(type) {
+	case *ast.FnDecl:
+		b.scope = WithOuter(b.scope)
+		return b.bindFnDecl(item)
+	case *ast.ErrItem:
+		return &bir.ErrItem{}
+	}
+	panic("unreachable")
+}
+
+func (b *binder) bindFnDecl(decl *ast.FnDecl) bir.Item {
+	params := b.bindParams(decl.In)
+	var ty bir.Ty
+	if decl.Out == nil {
+		ty = bir.TUnit
+	} else {
+		ty = lookupTy(decl.Out.Name)
+		if ty == bir.TErr {
+			b.error(decl.Out.Sp, "cannot find type `%s` in this scope", decl.Out.Name)
+			return &bir.ErrItem{}
+		}
+	}
+
+	ident := &bir.Ident{Name: decl.Ident.Name, Ty: ty}
+	body := b.bindExpr(decl.Body)
+	if ty != body.Type() {
+		if decl.Out != nil {
+			b.error(
+				decl.Out.Sp,
+				"expected this function to return `%s`, but got `%s`",
+				ty,
+				body.Type(),
+			)
+		} else {
+			// FIXME: change fn decl signature to always have a block expr
+			block := decl.Body.(*ast.BlockExpr)
+			sp := block.Exprs[len(block.Exprs)-1].Span()
+			b.error(sp, "expected this function to return `%s`, but got `%s`", ty, body.Type())
+		}
+		return &bir.ErrItem{}
+	}
+
+	return &bir.FnDecl{Ident: ident, In: params, Out: ty, Body: body}
+}
+
+func (b *binder) bindParams(aParams []*ast.Param) []*bir.Param {
+	var params []*bir.Param
+	seen := make(map[string]bool, len(aParams))
+	for _, aParam := range aParams {
+		if ok := seen[aParam.Ident.Name]; ok {
+			b.error(aParam.Ident.Sp, "parameter `%s` already exists", aParam.Ident.Name)
+		} else {
+			seen[aParam.Ident.Name] = true
+			param := b.bindParam(aParam)
+			if param != nil {
+				params = append(params, param)
+				b.scope.Insert(param.Ident.Name, param)
+			}
+		}
+	}
+	return params
+}
+
+func (b *binder) bindParam(aParam *ast.Param) *bir.Param {
+	ty := lookupTy(aParam.Ty.Name)
+	if ty == bir.TErr {
+		b.error(aParam.Ty.Sp, "cannot find type `%s` in this scope", aParam.Ty.Name)
+		return nil
+	}
+	ident := &bir.Ident{Name: aParam.Ident.Name}
+	return &bir.Param{Ident: ident, Ty: ty}
 }
 
 func (b *binder) bindExpr(expr ast.Expr) bir.Expr {
 	switch expr := expr.(type) {
 	case *ast.Ident:
-		if v, ok := b.scope.Get(expr.Name); ok {
-			return &bir.Ident{Name: expr.Name, Ty: v.Type()}
+		if d, ok := b.scope.Get(expr.Name); ok {
+			return &bir.Ident{Name: expr.Name, Ty: d.Type()}
 		}
-		b.error(expr.Sp, "could not find anything named `%s`", expr.Name)
+		b.error(expr.Sp, "could not find anything named `%s` in this scope", expr.Name)
 		return &bir.ErrExpr{}
 	case *ast.IntegerLiteral:
 		if v, err := strconv.Atoi(expr.V); err == nil {
@@ -61,6 +136,7 @@ func (b *binder) bindExpr(expr ast.Expr) bir.Expr {
 	case *ast.ErrExpr:
 		return &bir.ErrExpr{}
 	}
+
 	panic("unreachable")
 }
 
@@ -97,7 +173,7 @@ func (b *binder) bindLetExpr(expr *ast.LetExpr) bir.Expr {
 	if expr.Ty != nil {
 		ty = lookupTy(expr.Ty.Name)
 		if ty == bir.TErr {
-			b.error(expr.Ty.Sp, "unknown type")
+			b.error(expr.Ty.Sp, "cannot find type `%s` in this scope", expr.Ty.Name)
 			return &bir.ErrExpr{}
 		}
 
@@ -108,9 +184,11 @@ func (b *binder) bindLetExpr(expr *ast.LetExpr) bir.Expr {
 	} else {
 		ty = init.Type()
 	}
-	b.scope.Insert(expr.Ident.Name, init)
+
 	ident := &bir.Ident{Name: expr.Ident.Name, Ty: ty}
-	return &bir.LetExpr{Ident: ident, Ty: ty, Init: init}
+	le := &bir.LetExpr{Ident: ident, Ty: ty, Init: init}
+	b.scope.Insert(expr.Ident.Name, le)
+	return le
 }
 
 func (b *binder) bindAssignExpr(expr *ast.AssignExpr) bir.Expr {
@@ -118,12 +196,16 @@ func (b *binder) bindAssignExpr(expr *ast.AssignExpr) bir.Expr {
 	y := b.bindExpr(expr.Y)
 	switch x := x.(type) {
 	case *bir.Ident:
-		if v, ok := b.scope.Get(x.Name); ok {
-			if v.Type() != y.Type() {
-				b.error(expr.Y.Span(), "expected `%s`, but got `%s`", v.Type(), y.Type())
+		if d, ok := b.scope.Get(x.Name); ok {
+			switch d := d.(type) {
+			case *bir.LetExpr:
+				if d.Type() != y.Type() {
+					b.error(expr.Y.Span(), "expected `%s`, but got `%s`", d.Type(), y.Type())
+					return &bir.ErrExpr{}
+				}
+			default:
+				b.error(expr.X.Span(), "can only assign to identifiers for now")
 				return &bir.ErrExpr{}
-			} else {
-				b.scope.Insert(x.Name, y)
 			}
 		}
 		return &bir.AssignExpr{X: &bir.Ident{Name: x.Name, Ty: y.Type()}, Y: y}

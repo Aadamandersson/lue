@@ -6,10 +6,57 @@ import (
 	"github.com/aadamandersson/lue/internal/ast"
 )
 
-type Expr interface {
-	Type() Ty
-	exprNode()
+type (
+	Item interface {
+		Type() Ty
+		itemNode()
+	}
+
+	Definition interface {
+		Type() Ty
+		definition()
+	}
+
+	Expr interface {
+		Type() Ty
+		exprNode()
+	}
+)
+
+// Items
+type (
+	// A function declaration.
+	// `fn ident([params]) [: ty] { exprs }`
+	FnDecl struct {
+		Ident *Ident
+		In    []*Param
+		Out   Ty // Optional, `()` if not provided
+		Body  Expr
+	}
+
+	// Placeholder when we have some parse or bind error.
+	ErrItem struct{}
+)
+
+// A function parameter.
+// `ident: ty`
+type Param struct {
+	Ident *Ident
+	Ty    Ty
 }
+
+// Ensure that we can only assign item nodes to an Item.
+func (*FnDecl) itemNode()  {}
+func (*ErrItem) itemNode() {}
+
+func (i *FnDecl) Type() Ty  { return i.Out }
+func (i *ErrItem) Type() Ty { return TErr }
+
+// Definitions
+func (*FnDecl) definition()  {}
+func (*LetExpr) definition() {}
+func (*Param) definition()   {}
+func (p *Param) Type() Ty    { return p.Ty }
 
 // Expressions
 type (
@@ -69,7 +116,7 @@ type (
 		Exprs []Expr
 	}
 
-	// Placeholder when we have some bind error.
+	// Placeholder when we have some parse or bind error.
 	ErrExpr struct{}
 )
 
@@ -88,8 +135,8 @@ func (e *Ident) Type() Ty          { return e.Ty }
 func (e *IntegerLiteral) Type() Ty { return TInt }
 func (e *BooleanLiteral) Type() Ty { return TBool }
 func (e *BinaryExpr) Type() Ty     { return e.Op.Ty }
-func (e *LetExpr) Type() Ty        { return e.Ty }
-func (e *AssignExpr) Type() Ty     { return e.Y.Type() }
+func (e *LetExpr) Type() Ty        { return TUnit }
+func (e *AssignExpr) Type() Ty     { return TUnit }
 func (e *IfExpr) Type() Ty         { return e.Then.Type() }
 func (e *BlockExpr) Type() Ty {
 	if len(e.Exprs) == 0 {
@@ -112,6 +159,7 @@ var tys = [...]string{
 	TErr:  "?",
 	TInt:  "int",
 	TBool: "bool",
+	TUnit: "()",
 }
 
 func (t Ty) String() string {

@@ -25,10 +25,14 @@ const (
 	EqEq                // `==`
 	Ne                  // `!=`
 	Colon               // `:`
+	Comma               // `,`
+	LParen              // `(`
 	LBrace              // `{`
+	RParen              // `)`
 	RBrace              // `}`
 	Else                // `else`
 	False               // `false`
+	Fn                  // `fn`
 	If                  // `if`
 	Let                 // `let`
 	True                // `true`
@@ -52,10 +56,14 @@ var tokens = [...]string{
 	EqEq:    "==",
 	Ne:      "!=",
 	Colon:   ":",
+	Comma:   ",",
+	LParen:  "(",
 	LBrace:  "{",
+	RParen:  ")",
 	RBrace:  "}",
 	Else:    "else",
 	False:   "false",
+	Fn:      "fn",
 	If:      "if",
 	Let:     "let",
 	True:    "true",
@@ -101,6 +109,7 @@ func (t Token) IsOneOf(ks ...Kind) bool {
 var keywords = map[string]Kind{
 	"else":  Else,
 	"false": False,
+	"fn":    Fn,
 	"if":    If,
 	"let":   Let,
 	"true":  True,

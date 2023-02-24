@@ -37,24 +37,25 @@ func (u Unit) String() string {
 	return "()"
 }
 
-func Evaluate(filename string, src []byte) (Value, bool) {
+func Evaluate(filename string, src []byte) bool {
 	file := span.NewSourceFile(filename, src)
 	diags := diagnostic.NewBag(file)
-	aExpr := parser.Parse(src, diags)
-	expr := binder.Bind(aExpr, diags)
+	aItems := parser.Parse(src, diags)
+	items := binder.Bind(aItems, diags)
 	e := new(diags)
-	result, ok := e.eval(expr)
+	ok := e.eval(items)
 
 	if !diags.Empty() {
 		diags.Dump()
 	}
 
-	return result, ok
+	return ok
 }
 
 type evaluator struct {
-	diags  *diagnostic.Bag
-	locals []map[string]Value
+	diags     *diagnostic.Bag
+	functions map[string]*bir.FnDecl
+	locals    []map[string]Value
 }
 
 func new(diags *diagnostic.Bag) evaluator {
@@ -66,8 +67,20 @@ func new(diags *diagnostic.Bag) evaluator {
 	}
 }
 
-func (e *evaluator) eval(expr bir.Expr) (Value, bool) {
-	return e.evalExpr(expr)
+func (e *evaluator) eval(items []bir.Item) bool {
+	e.functions = make(map[string]*bir.FnDecl, len(items))
+	for _, item := range items {
+		switch item := item.(type) {
+		case *bir.FnDecl:
+			e.functions[item.Ident.Name] = item
+		case *bir.ErrItem:
+			return false
+		}
+	}
+
+	// FIXME: ensure we have a main function
+	_, ok := e.evalExpr(e.functions["main"].Body)
+	return ok
 }
 
 func (e *evaluator) evalExpr(expr bir.Expr) (Value, bool) {
