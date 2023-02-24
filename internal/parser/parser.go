@@ -51,11 +51,20 @@ func (p *parser) parseExpr() ast.Expr {
 }
 
 // parseLetExpr parses a let binding, `let` token already eaten.
-// `let ident = init`
+// `let ident [: ty] = init`
 func (p *parser) parseLetExpr(let_sp span.Span) ast.Expr {
 	ident := p.parseIdent()
 	if ident == nil {
 		p.error("expected identifier in let binding, but got `%s`", p.tok.Kind)
+	}
+
+	var ty *ast.Ident
+	_, has_colon := p.eat(token.Colon)
+	if has_colon {
+		ty = p.parseIdent()
+		if ty == nil {
+			p.error("expected a type after `:`")
+		}
 	}
 
 	if _, ok := p.eat(token.Eq); !ok {
@@ -67,12 +76,12 @@ func (p *parser) parseLetExpr(let_sp span.Span) ast.Expr {
 		p.error("expected expression, but got `%s`", p.tok.Kind)
 	}
 
-	if ident == nil || init == nil {
+	if ident == nil || init == nil || (has_colon && ty == nil) {
 		return &ast.ErrExpr{}
 	}
 
 	sp := let_sp.To(init.Span())
-	return &ast.LetExpr{Ident: ident, Init: init, Sp: sp}
+	return &ast.LetExpr{Ident: ident, Ty: ty, Init: init, Sp: sp}
 }
 
 func (p *parser) parsePrecExpr(min_prec int) ast.Expr {

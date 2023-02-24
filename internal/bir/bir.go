@@ -41,9 +41,10 @@ type (
 	}
 
 	// A let binding.
-	// `let ident = init`
+	// `let ident [: ty] = init`
 	LetExpr struct {
 		Ident *Ident
+		Ty    Ty // Optional, inferred if not provided.
 		Init  Expr
 	}
 
@@ -87,7 +88,7 @@ func (e *Ident) Type() Ty          { return e.Ty }
 func (e *IntegerLiteral) Type() Ty { return TInt }
 func (e *BooleanLiteral) Type() Ty { return TBool }
 func (e *BinaryExpr) Type() Ty     { return e.Op.Ty }
-func (e *LetExpr) Type() Ty        { return e.Init.Type() }
+func (e *LetExpr) Type() Ty        { return e.Ty }
 func (e *AssignExpr) Type() Ty     { return e.Y.Type() }
 func (e *IfExpr) Type() Ty         { return e.Then.Type() }
 func (e *BlockExpr) Type() Ty {

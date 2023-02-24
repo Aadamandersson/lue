@@ -92,10 +92,25 @@ func (b *binder) bindBinaryExpr(expr *ast.BinaryExpr) bir.Expr {
 }
 
 func (b *binder) bindLetExpr(expr *ast.LetExpr) bir.Expr {
+	var ty bir.Ty
 	init := b.bindExpr(expr.Init)
+	if expr.Ty != nil {
+		ty = lookupTy(expr.Ty.Name)
+		if ty == bir.TErr {
+			b.error(expr.Ty.Sp, "unknown type")
+			return &bir.ErrExpr{}
+		}
+
+		if ty != init.Type() {
+			b.error(expr.Init.Span(), "expected `%s`, but got `%s`", ty, init.Type())
+			return &bir.ErrExpr{}
+		}
+	} else {
+		ty = init.Type()
+	}
 	b.scope.Insert(expr.Ident.Name, init)
-	ident := &bir.Ident{Name: expr.Ident.Name, Ty: init.Type()}
-	return &bir.LetExpr{Ident: ident, Init: init}
+	ident := &bir.Ident{Name: expr.Ident.Name, Ty: ty}
+	return &bir.LetExpr{Ident: ident, Ty: ty, Init: init}
 }
 
 func (b *binder) bindAssignExpr(expr *ast.AssignExpr) bir.Expr {
@@ -155,4 +170,15 @@ func (b *binder) bindBlockExpr(expr *ast.BlockExpr) bir.Expr {
 func (b *binder) error(span span.Span, format string, a ...any) {
 	msg := fmt.Sprintf(format, a...)
 	diagnostic.NewBuilder(msg, span).WithLabel("here").Emit(b.diags)
+}
+
+func lookupTy(name string) bir.Ty {
+	switch name {
+	case "int":
+		return bir.TInt
+	case "bool":
+		return bir.TBool
+	default:
+		return bir.TErr
+	}
 }

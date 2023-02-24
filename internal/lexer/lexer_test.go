@@ -33,6 +33,7 @@ var cases = []struct {
 	{"<=", token.New(token.Le, "", span.New(0, 2))},
 	{"==", token.New(token.EqEq, "", span.New(0, 2))},
 	{"!=", token.New(token.Ne, "", span.New(0, 2))},
+	{":", token.New(token.Colon, "", span.New(0, 1))},
 	{"{", token.New(token.LBrace, "", span.New(0, 1))},
 	{"}", token.New(token.RBrace, "", span.New(0, 1))},
 	{"else", token.New(token.Else, "else", span.New(0, 4))},

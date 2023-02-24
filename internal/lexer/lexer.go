@@ -79,6 +79,8 @@ func (l *lexer) lexToken(first byte) (token.Kind, string) {
 			return token.Ne, ""
 		}
 		return token.Unknown, string(first)
+	case ':':
+		return token.Colon, ""
 	case '{':
 		return token.LBrace, ""
 	case '}':

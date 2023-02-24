@@ -46,9 +46,10 @@ type (
 	}
 
 	// A let binding.
-	// `let ident = init`
+	// `let ident [: ty] = init`
 	LetExpr struct {
 		Ident *Ident
+		Ty    *Ident // Optional, may be nil
 		Init  Expr
 		Sp    span.Span
 	}

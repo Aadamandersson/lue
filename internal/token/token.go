@@ -24,6 +24,7 @@ const (
 	Le                  // `<=`
 	EqEq                // `==`
 	Ne                  // `!=`
+	Colon               // `:`
 	LBrace              // `{`
 	RBrace              // `}`
 	Else                // `else`
@@ -50,6 +51,7 @@ var tokens = [...]string{
 	Le:      ">=",
 	EqEq:    "==",
 	Ne:      "!=",
+	Colon:   ":",
 	LBrace:  "{",
 	RBrace:  "}",
 	Else:    "else",
