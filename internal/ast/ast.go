@@ -25,7 +25,7 @@ type (
 	// `fn ident([params]) [: ty] { exprs }`
 	FnDecl struct {
 		Ident *Ident
-		In    []*Param
+		In    []*VarDecl
 		Out   *Ident
 		Body  Expr
 		Sp    span.Span
@@ -35,11 +35,9 @@ type (
 	ErrItem struct{}
 )
 
-// A function parameter.
-// `ident: ty`
-type Param struct {
+type VarDecl struct {
 	Ident *Ident
-	Ty    *Ident
+	Ty    *Ident // May be nil if used in a let binding
 }
 
 // Ensure that we can only assign item nodes to an Item.
@@ -81,10 +79,9 @@ type (
 	// A let binding.
 	// `let ident [: ty] = init`
 	LetExpr struct {
-		Ident *Ident
-		Ty    *Ident // Optional, may be nil
-		Init  Expr
-		Sp    span.Span
+		Decl *VarDecl
+		Init Expr
+		Sp   span.Span
 	}
 
 	// An assignment expression.

@@ -160,7 +160,7 @@ func (e *evaluator) evalLetExpr(expr *bir.LetExpr) (Value, bool) {
 	if !ok {
 		return nil, ok
 	}
-	e.locals[len(e.locals)-1][expr.Ident.Name] = v
+	e.locals[len(e.locals)-1][expr.Decl.Ident.Name] = v
 	return Unit{}, true
 }
 

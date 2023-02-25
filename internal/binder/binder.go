@@ -78,8 +78,8 @@ func (b *binder) bindFnDecl(decl *ast.FnDecl) bir.Item {
 	return &bir.FnDecl{Ident: ident, In: params, Out: ty, Body: body}
 }
 
-func (b *binder) bindParams(aParams []*ast.Param) []*bir.Param {
-	var params []*bir.Param
+func (b *binder) bindParams(aParams []*ast.VarDecl) []*bir.VarDecl {
+	var params []*bir.VarDecl
 	seen := make(map[string]bool, len(aParams))
 	for _, aParam := range aParams {
 		if ok := seen[aParam.Ident.Name]; ok {
@@ -96,14 +96,14 @@ func (b *binder) bindParams(aParams []*ast.Param) []*bir.Param {
 	return params
 }
 
-func (b *binder) bindParam(aParam *ast.Param) *bir.Param {
+func (b *binder) bindParam(aParam *ast.VarDecl) *bir.VarDecl {
 	ty := lookupTy(aParam.Ty.Name)
 	if ty == bir.TErr {
 		b.error(aParam.Ty.Sp, "cannot find type `%s` in this scope", aParam.Ty.Name)
 		return nil
 	}
 	ident := &bir.Ident{Name: aParam.Ident.Name}
-	return &bir.Param{Ident: ident, Ty: ty}
+	return &bir.VarDecl{Ident: ident, Ty: ty}
 }
 
 func (b *binder) bindExpr(expr ast.Expr) bir.Expr {
@@ -170,10 +170,10 @@ func (b *binder) bindBinaryExpr(expr *ast.BinaryExpr) bir.Expr {
 func (b *binder) bindLetExpr(expr *ast.LetExpr) bir.Expr {
 	var ty bir.Ty
 	init := b.bindExpr(expr.Init)
-	if expr.Ty != nil {
-		ty = lookupTy(expr.Ty.Name)
+	if expr.Decl.Ty != nil {
+		ty = lookupTy(expr.Decl.Ty.Name)
 		if ty == bir.TErr {
-			b.error(expr.Ty.Sp, "cannot find type `%s` in this scope", expr.Ty.Name)
+			b.error(expr.Decl.Ty.Sp, "cannot find type `%s` in this scope", expr.Decl.Ty.Name)
 			return &bir.ErrExpr{}
 		}
 
@@ -185,9 +185,10 @@ func (b *binder) bindLetExpr(expr *ast.LetExpr) bir.Expr {
 		ty = init.Type()
 	}
 
-	ident := &bir.Ident{Name: expr.Ident.Name, Ty: ty}
-	le := &bir.LetExpr{Ident: ident, Ty: ty, Init: init}
-	b.scope.Insert(expr.Ident.Name, le)
+	ident := &bir.Ident{Name: expr.Decl.Ident.Name, Ty: ty}
+	decl := &bir.VarDecl{Ident: ident, Ty: ty}
+	le := &bir.LetExpr{Decl: decl, Init: init}
+	b.scope.Insert(expr.Decl.Ident.Name, decl)
 	return le
 }
 
@@ -198,7 +199,7 @@ func (b *binder) bindAssignExpr(expr *ast.AssignExpr) bir.Expr {
 	case *bir.Ident:
 		if d, ok := b.scope.Get(x.Name); ok {
 			switch d := d.(type) {
-			case *bir.LetExpr:
+			case *bir.VarDecl:
 				if d.Type() != y.Type() {
 					b.error(expr.Y.Span(), "expected `%s`, but got `%s`", d.Type(), y.Type())
 					return &bir.ErrExpr{}

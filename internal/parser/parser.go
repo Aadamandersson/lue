@@ -82,8 +82,8 @@ func (p *parser) parseFnDecl(fn_span span.Span) ast.Item {
 	return &ast.FnDecl{Ident: ident, In: params, Out: ty, Body: body, Sp: sp}
 }
 
-func (p *parser) parseParams() []*ast.Param {
-	params := make([]*ast.Param, 0)
+func (p *parser) parseParams() []*ast.VarDecl {
+	params := make([]*ast.VarDecl, 0)
 
 	if _, ok := p.eat(token.LParen); !ok {
 		p.error("expected opening delimiter `%s`", token.LParen)
@@ -107,7 +107,7 @@ func (p *parser) parseParams() []*ast.Param {
 			continue
 		}
 
-		param := &ast.Param{Ident: ident, Ty: ty}
+		param := &ast.VarDecl{Ident: ident, Ty: ty}
 		params = append(params, param)
 
 		if _, ok := p.eat(token.Comma); !ok {
@@ -161,7 +161,7 @@ func (p *parser) parseLetExpr(let_sp span.Span) ast.Expr {
 	}
 
 	sp := let_sp.To(init.Span())
-	return &ast.LetExpr{Ident: ident, Ty: ty, Init: init, Sp: sp}
+	return &ast.LetExpr{Decl: &ast.VarDecl{Ident: ident, Ty: ty}, Init: init, Sp: sp}
 }
 
 func (p *parser) parsePrecExpr(min_prec int) ast.Expr {

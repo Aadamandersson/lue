@@ -29,7 +29,7 @@ type (
 	// `fn ident([params]) [: ty] { exprs }`
 	FnDecl struct {
 		Ident *Ident
-		In    []*Param
+		In    []*VarDecl
 		Out   Ty // Optional, `()` if not provided
 		Body  Expr
 	}
@@ -38,9 +38,7 @@ type (
 	ErrItem struct{}
 )
 
-// A function parameter.
-// `ident: ty`
-type Param struct {
+type VarDecl struct {
 	Ident *Ident
 	Ty    Ty
 }
@@ -54,9 +52,8 @@ func (i *ErrItem) Type() Ty { return TErr }
 
 // Definitions
 func (*FnDecl) definition()  {}
-func (*LetExpr) definition() {}
-func (*Param) definition()   {}
-func (p *Param) Type() Ty    { return p.Ty }
+func (*VarDecl) definition() {}
+func (d *VarDecl) Type() Ty  { return d.Ty }
 
 // Expressions
 type (
@@ -90,9 +87,8 @@ type (
 	// A let binding.
 	// `let ident [: ty] = init`
 	LetExpr struct {
-		Ident *Ident
-		Ty    Ty // Optional, inferred if not provided.
-		Init  Expr
+		Decl *VarDecl
+		Init Expr
 	}
 
 	// An assignment expression.
