@@ -112,6 +112,13 @@ type (
 		Exprs []Expr
 	}
 
+	// A function call.
+	// `fn(args)`
+	CallExpr struct {
+		Fn   Expr
+		Args []Expr
+	}
+
 	// Placeholder when we have some parse or bind error.
 	ErrExpr struct{}
 )
@@ -125,6 +132,7 @@ func (*LetExpr) exprNode()        {}
 func (*AssignExpr) exprNode()     {}
 func (*IfExpr) exprNode()         {}
 func (*BlockExpr) exprNode()      {}
+func (*CallExpr) exprNode()       {}
 func (*ErrExpr) exprNode()        {}
 
 func (e *Ident) Type() Ty          { return e.Ty }
@@ -140,7 +148,8 @@ func (e *BlockExpr) Type() Ty {
 	}
 	return e.Exprs[len(e.Exprs)-1].Type()
 }
-func (e *ErrExpr) Type() Ty { return TErr }
+func (e *CallExpr) Type() Ty { return e.Fn.Type() }
+func (e *ErrExpr) Type() Ty  { return TErr }
 
 type Ty int
 

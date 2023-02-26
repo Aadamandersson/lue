@@ -108,6 +108,14 @@ type (
 		Sp    span.Span
 	}
 
+	// A function call.
+	// `fn(args)`
+	CallExpr struct {
+		Fn   Expr
+		Args []Expr
+		Sp   span.Span
+	}
+
 	// Placeholder when we have some parse error.
 	ErrExpr struct {
 		Sp span.Span
@@ -123,6 +131,7 @@ func (*LetExpr) exprNode()        {}
 func (*AssignExpr) exprNode()     {}
 func (*IfExpr) exprNode()         {}
 func (*BlockExpr) exprNode()      {}
+func (*CallExpr) exprNode()       {}
 func (*ErrExpr) exprNode()        {}
 
 func (e *Ident) Span() span.Span          { return e.Sp }
@@ -133,6 +142,7 @@ func (e *LetExpr) Span() span.Span        { return e.Sp }
 func (e *AssignExpr) Span() span.Span     { return e.Sp }
 func (e *IfExpr) Span() span.Span         { return e.Sp }
 func (e *BlockExpr) Span() span.Span      { return e.Sp }
+func (e *CallExpr) Span() span.Span       { return e.Sp }
 func (e *ErrExpr) Span() span.Span        { return e.Sp }
 
 type BinOp struct {

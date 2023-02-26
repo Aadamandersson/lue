@@ -17,11 +17,11 @@ func Parse(src []byte, diags *diagnostic.Bag) []ast.Item {
 }
 
 type parser struct {
-	diags    *diagnostic.Bag
-	tokens   []token.Token
-	tok      token.Token
-	prev_tok token.Token
-	pos      int
+	diags   *diagnostic.Bag
+	tokens  []token.Token
+	tok     token.Token
+	prevTok token.Token
+	pos     int
 }
 
 func new(diags *diagnostic.Bag, tokens []token.Token) parser {
@@ -45,15 +45,15 @@ func (p *parser) parse() []ast.Item {
 }
 
 func (p *parser) parseItem() ast.Item {
-	if fn_span, ok := p.eat(token.Fn); ok {
-		return p.parseFnDecl(fn_span)
+	if fnSpan, ok := p.eat(token.Fn); ok {
+		return p.parseFnDecl(fnSpan)
 	}
 	return nil
 }
 
 // parseFnDecl parses a function declaration, `fn` token already eaten.
 // `fn ident([params]) [:ty] { exprs }`
-func (p *parser) parseFnDecl(fn_span span.Span) ast.Item {
+func (p *parser) parseFnDecl(fnSpan span.Span) ast.Item {
 	ident := p.parseIdent()
 	if ident == nil {
 		p.error("expected function name, but got `%s`", p.tok.Kind)
@@ -65,20 +65,20 @@ func (p *parser) parseFnDecl(fn_span span.Span) ast.Item {
 	}
 
 	var ty *ast.Ident
-	_, has_colon := p.eat(token.Colon)
-	if has_colon {
+	_, hasColon := p.eat(token.Colon)
+	if hasColon {
 		ty = p.parseIdent()
 		if ty == nil {
 			p.error("expected type after `:`")
 		}
 	}
 
-	if ty == nil && has_colon {
+	if ty == nil && hasColon {
 		return &ast.ErrItem{}
 	}
 
 	body := p.parseBlockExpr()
-	sp := fn_span.To(body.Span())
+	sp := fnSpan.To(body.Span())
 	return &ast.FnDecl{Ident: ident, In: params, Out: ty, Body: body, Sp: sp}
 }
 
@@ -139,8 +139,8 @@ func (p *parser) parseLetExpr(let_sp span.Span) ast.Expr {
 	}
 
 	var ty *ast.Ident
-	_, has_colon := p.eat(token.Colon)
-	if has_colon {
+	_, hasColon := p.eat(token.Colon)
+	if hasColon {
 		ty = p.parseIdent()
 		if ty == nil {
 			p.error("expected type after `:`")
@@ -156,7 +156,7 @@ func (p *parser) parseLetExpr(let_sp span.Span) ast.Expr {
 		p.error("expected expression, but got `%s`", p.tok.Kind)
 	}
 
-	if ident == nil || init == nil || (has_colon && ty == nil) {
+	if ident == nil || init == nil || (hasColon && ty == nil) {
 		return &ast.ErrExpr{}
 	}
 
@@ -165,7 +165,7 @@ func (p *parser) parseLetExpr(let_sp span.Span) ast.Expr {
 }
 
 func (p *parser) parsePrecExpr(min_prec int) ast.Expr {
-	expr := p.parseBotExpr()
+	expr := p.parseCallExpr()
 
 	for {
 		op, ok := ast.BinOpFromToken(p.tok)
@@ -192,17 +192,42 @@ func (p *parser) parsePrecExpr(min_prec int) ast.Expr {
 	return expr
 }
 
+func (p *parser) parseCallExpr() ast.Expr {
+	expr := p.parseBotExpr()
+
+	if _, ok := p.eat(token.LParen); ok {
+		var args []ast.Expr
+		for !p.tok.IsOneOf(token.RParen, token.Eof) {
+			args = append(args, p.parseExpr())
+			if _, ok := p.eat(token.Comma); !ok {
+				break
+			}
+		}
+
+		rpSp, ok := p.eat(token.RParen)
+		if !ok {
+			p.error("expected closing delimiter `%s`", token.RParen)
+			return &ast.ErrExpr{}
+		}
+
+		sp := expr.Span().To(rpSp)
+		return &ast.CallExpr{Fn: expr, Args: args, Sp: sp}
+	}
+
+	return expr
+}
+
 func (p *parser) parseBotExpr() ast.Expr {
 	if sp, ok := p.eat(token.If); ok {
 		return p.parseIfExpr(sp)
 	}
 
 	if sp, ok := p.eat(token.Ident); ok {
-		return &ast.Ident{Name: p.prev_tok.Lit, Sp: sp}
+		return &ast.Ident{Name: p.prevTok.Lit, Sp: sp}
 	}
 
 	if sp, ok := p.eat(token.Number); ok {
-		return &ast.IntegerLiteral{V: p.prev_tok.Lit, Sp: sp}
+		return &ast.IntegerLiteral{V: p.prevTok.Lit, Sp: sp}
 	}
 
 	if sp, ok := p.eat(token.False); ok {
@@ -218,18 +243,18 @@ func (p *parser) parseBotExpr() ast.Expr {
 
 // parseIfExpr parses `if cond { exprs } [else [if cond] { exprs ]`
 // `if` token already eaten.
-func (p *parser) parseIfExpr(if_sp span.Span) ast.Expr {
+func (p *parser) parseIfExpr(ifSp span.Span) ast.Expr {
 	cond := p.parseExpr()
 	if cond == nil {
 		p.error("expected condition")
 	}
 
 	then := p.parseBlockExpr()
-	sp := if_sp.To(then.Span())
+	sp := ifSp.To(then.Span())
 	var els ast.Expr
 	if _, ok := p.eat(token.Else); ok {
 		els = p.parseElseExpr()
-		sp = if_sp.To(els.Span())
+		sp = ifSp.To(els.Span())
 	}
 	return &ast.IfExpr{Cond: cond, Then: then, Else: els, Sp: sp}
 }
@@ -237,15 +262,15 @@ func (p *parser) parseIfExpr(if_sp span.Span) ast.Expr {
 // parseElseExpr parses `else [if cond] { exprs }`.
 // `else` token already eaten.
 func (p *parser) parseElseExpr() ast.Expr {
-	if if_sp, ok := p.eat(token.If); ok {
-		return p.parseIfExpr(if_sp)
+	if ifSp, ok := p.eat(token.If); ok {
+		return p.parseIfExpr(ifSp)
 	}
 	return p.parseBlockExpr()
 }
 
 // parseBlockExpr parses `{ exprs }`
 func (p *parser) parseBlockExpr() ast.Expr {
-	open_sp, ok := p.eat(token.LBrace)
+	openSp, ok := p.eat(token.LBrace)
 	if !ok {
 		p.error("expected opening delimiter `%s`", token.LBrace)
 		return &ast.ErrExpr{}
@@ -256,19 +281,19 @@ func (p *parser) parseBlockExpr() ast.Expr {
 		exprs = append(exprs, p.parseExpr())
 	}
 
-	close_sp, ok := p.eat(token.RBrace)
+	closeSp, ok := p.eat(token.RBrace)
 	if !ok {
 		p.error("expected closing delimiter `%s`", token.LBrace)
 		return &ast.ErrExpr{}
 	}
 
-	sp := open_sp.To(close_sp)
+	sp := openSp.To(closeSp)
 	return &ast.BlockExpr{Exprs: exprs, Sp: sp}
 }
 
 func (p *parser) parseIdent() *ast.Ident {
 	if sp, ok := p.eat(token.Ident); ok {
-		return &ast.Ident{Name: p.prev_tok.Lit, Sp: sp}
+		return &ast.Ident{Name: p.prevTok.Lit, Sp: sp}
 	}
 	return nil
 }
@@ -287,7 +312,7 @@ func (p *parser) eat(k token.Kind) (span.Span, bool) {
 // next advances the parser to the next token in tokens.
 func (p *parser) next() {
 	if p.pos < len(p.tokens) {
-		p.prev_tok = p.tok
+		p.prevTok = p.tok
 		p.tok = p.tokens[p.pos]
 		p.pos += 1
 	}

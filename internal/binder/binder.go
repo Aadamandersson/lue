@@ -133,6 +133,8 @@ func (b *binder) bindExpr(expr ast.Expr) bir.Expr {
 		return b.bindIfExpr(expr)
 	case *ast.BlockExpr:
 		return b.bindBlockExpr(expr)
+	case *ast.CallExpr:
+		return b.bindCallExpr(expr)
 	case *ast.ErrExpr:
 		return &bir.ErrExpr{}
 	}
@@ -248,6 +250,17 @@ func (b *binder) bindBlockExpr(expr *ast.BlockExpr) bir.Expr {
 	}
 	b.scope = prev
 	return &bir.BlockExpr{Exprs: exprs}
+}
+
+func (b *binder) bindCallExpr(expr *ast.CallExpr) bir.Expr {
+	fn := b.bindExpr(expr.Fn)
+	var args []bir.Expr
+	if expr.Args != nil {
+		for _, arg := range expr.Args {
+			args = append(args, b.bindExpr(arg))
+		}
+	}
+	return &bir.CallExpr{Fn: fn, Args: args}
 }
 
 func (b *binder) error(span span.Span, format string, a ...any) {
