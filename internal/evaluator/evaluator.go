@@ -18,12 +18,17 @@ type Value interface {
 type (
 	Integer int
 	Boolean bool
-	Unit    struct{}
+	Fn      struct {
+		Params []*bir.VarDecl
+		Body   bir.Expr
+	}
+	Unit struct{}
 )
 
 func (Integer) sealed() {}
 func (Boolean) sealed() {}
 func (Unit) sealed()    {}
+func (*Fn) sealed()     {}
 
 func (i Integer) String() string {
 	return fmt.Sprintf("%d", i)
@@ -37,13 +42,17 @@ func (u Unit) String() string {
 	return "()"
 }
 
+func (f *Fn) String() string {
+	return "fn"
+}
+
 func Evaluate(filename string, src []byte) bool {
 	file := span.NewSourceFile(filename, src)
 	diags := diagnostic.NewBag(file)
 	aItems := parser.Parse(src, diags)
-	items := binder.Bind(aItems, diags)
-	e := new(diags)
-	ok := e.eval(items)
+	fns := binder.Bind(aItems, diags)
+	e := new(fns, diags)
+	ok := e.eval()
 
 	if !diags.Empty() {
 		diags.Dump()
@@ -53,40 +62,34 @@ func Evaluate(filename string, src []byte) bool {
 }
 
 type evaluator struct {
-	diags     *diagnostic.Bag
-	functions map[string]*bir.FnDecl
-	locals    []map[string]Value
+	diags  *diagnostic.Bag
+	fns    map[string]*bir.Fn
+	locals []map[string]Value
 }
 
-func new(diags *diagnostic.Bag) evaluator {
+func new(fns map[string]*bir.Fn, diags *diagnostic.Bag) evaluator {
 	locals := make([]map[string]Value, 1)
 	locals = append(locals, make(map[string]Value))
 	return evaluator{
 		diags:  diags,
+		fns:    fns,
 		locals: locals,
 	}
 }
 
-func (e *evaluator) eval(items []bir.Item) bool {
-	e.functions = make(map[string]*bir.FnDecl, len(items))
-	for _, item := range items {
-		switch item := item.(type) {
-		case *bir.FnDecl:
-			e.functions[item.Ident.Name] = item
-		case *bir.ErrItem:
-			return false
-		}
-	}
-
+func (e *evaluator) eval() bool {
 	// FIXME: ensure we have a main function
-	_, ok := e.evalExpr(e.functions["main"].Body)
+	_, ok := e.evalExpr(e.fns["main"].Body)
 	return ok
 }
 
 func (e *evaluator) evalExpr(expr bir.Expr) (Value, bool) {
 	switch expr := expr.(type) {
-	case *bir.Ident:
-		return e.locals[len(e.locals)-1][expr.Name], true
+	case *bir.Fn:
+		fn := e.fns[expr.Decl.Ident.Name]
+		return &Fn{Params: fn.In, Body: fn.Body}, true
+	case *bir.VarDecl:
+		return e.locals[len(e.locals)-1][expr.Ident.Name], true
 	case *bir.IntegerLiteral:
 		return Integer(expr.V), true
 	case *bir.BooleanLiteral:
@@ -101,9 +104,12 @@ func (e *evaluator) evalExpr(expr bir.Expr) (Value, bool) {
 		return e.evalIfExpr(expr)
 	case *bir.BlockExpr:
 		return e.evalBlockExpr(expr)
+	case *bir.CallExpr:
+		return e.evalCallExpr(expr)
 	case *bir.ErrExpr:
 		return nil, false
 	}
+
 	panic("unreachable")
 }
 
@@ -171,8 +177,8 @@ func (e *evaluator) evalAssignExpr(expr *bir.AssignExpr) (Value, bool) {
 	}
 	// TODO: we ensure in the binder that this will always be an Ident for now,
 	// but eventually we want to support more types.
-	ident := expr.X.(*bir.Ident)
-	e.locals[len(e.locals)-1][ident.Name] = v
+	decl := expr.X.(*bir.VarDecl)
+	e.locals[len(e.locals)-1][decl.Ident.Name] = v
 	return Unit{}, true
 }
 
@@ -210,5 +216,36 @@ func (e *evaluator) evalBlockExpr(block *bir.BlockExpr) (Value, bool) {
 		}
 		lastVal = value
 	}
+	fmt.Println(lastVal)
 	return lastVal, true
+}
+
+func (e *evaluator) evalCallExpr(expr *bir.CallExpr) (Value, bool) {
+	fnVal, ok := e.evalExpr(expr.Fn)
+	if !ok {
+		return nil, ok
+	}
+
+	fn := fnVal.(*Fn)
+	if expr.Args == nil {
+		return e.evalExpr(fn.Body)
+	}
+
+	frame := make(map[string]Value, len(expr.Args))
+	for i, arg := range expr.Args {
+		argVal, ok := e.evalExpr(arg)
+		if !ok {
+			return nil, ok
+		}
+		param := fn.Params[i]
+		frame[param.Ident.Name] = argVal
+	}
+	e.locals = append(e.locals, frame)
+	v, ok := e.evalExpr(fn.Body)
+	e.locals = e.locals[:len(e.locals)-1]
+	if !ok {
+		return nil, ok
+	}
+
+	return v, true
 }

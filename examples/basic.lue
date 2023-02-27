@@ -1,4 +1,8 @@
 
-fn main() {
+fn add(x: int, y: int): int {
+    x + y
+}
 
+fn main() {
+    let result = add()
 }

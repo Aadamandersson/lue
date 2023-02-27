@@ -7,61 +7,27 @@ import (
 )
 
 type (
-	Item interface {
-		Type() Ty
-		itemNode()
-	}
-
-	Definition interface {
-		Type() Ty
-		definition()
-	}
-
 	Expr interface {
 		Type() Ty
 		exprNode()
 	}
 )
 
-// Items
-type (
-	// A function declaration.
-	// `fn ident([params]) [: ty] { exprs }`
-	FnDecl struct {
-		Ident *Ident
-		In    []*VarDecl
-		Out   Ty // Optional, `()` if not provided
-		Body  Expr
-	}
-
-	// Placeholder when we have some parse or bind error.
-	ErrItem struct{}
-)
-
-type VarDecl struct {
-	Ident *Ident
-	Ty    Ty
-}
-
-// Ensure that we can only assign item nodes to an Item.
-func (*FnDecl) itemNode()  {}
-func (*ErrItem) itemNode() {}
-
-func (i *FnDecl) Type() Ty  { return i.Out }
-func (i *ErrItem) Type() Ty { return TErr }
-
-// Definitions
-func (*FnDecl) definition()  {}
-func (*VarDecl) definition() {}
-func (d *VarDecl) Type() Ty  { return d.Ty }
-
 // Expressions
 type (
-	// An identifier.
-	// E.g., `foo`
-	Ident struct {
-		Name string
-		Ty   Ty
+	// A reference to a function.
+	Fn struct {
+		Decl *ast.FnDecl
+		In   []*VarDecl
+		Out  Ty
+		Body Expr
+	}
+
+	// A variable declaration.
+	// `ident: ty`
+	VarDecl struct {
+		Ident *Ident
+		Ty    Ty
 	}
 
 	// An integer literal.
@@ -124,7 +90,8 @@ type (
 )
 
 // Ensure that we can only assign expression nodes to an Expr.
-func (*Ident) exprNode()          {}
+func (*Fn) exprNode()             {}
+func (*VarDecl) exprNode()        {}
 func (*IntegerLiteral) exprNode() {}
 func (*BooleanLiteral) exprNode() {}
 func (*BinaryExpr) exprNode()     {}
@@ -135,7 +102,8 @@ func (*BlockExpr) exprNode()      {}
 func (*CallExpr) exprNode()       {}
 func (*ErrExpr) exprNode()        {}
 
-func (e *Ident) Type() Ty          { return e.Ty }
+func (e *Fn) Type() Ty             { return e.Out }
+func (e *VarDecl) Type() Ty        { return e.Ty }
 func (e *IntegerLiteral) Type() Ty { return TInt }
 func (e *BooleanLiteral) Type() Ty { return TBool }
 func (e *BinaryExpr) Type() Ty     { return e.Op.Ty }
@@ -150,6 +118,10 @@ func (e *BlockExpr) Type() Ty {
 }
 func (e *CallExpr) Type() Ty { return e.Fn.Type() }
 func (e *ErrExpr) Type() Ty  { return TErr }
+
+type Ident struct {
+	Name string
+}
 
 type Ty int
 

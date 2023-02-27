@@ -10,9 +10,70 @@ import (
 	"github.com/aadamandersson/lue/internal/span"
 )
 
-func Bind(items []ast.Item, diags *diagnostic.Bag) []bir.Item {
-	b := new(diags)
-	return b.bind(items)
+func Bind(items []ast.Item, diags *diagnostic.Bag) map[string]*bir.Fn {
+	scope := bindGlobalScope(items, diags)
+	fns := scope.Functions()
+
+	b := new(diags, scope)
+
+	for _, fn := range fns {
+		b.bindFnDecl(fn, diags, scope)
+	}
+
+	return fns
+}
+
+func bindGlobalScope(aItems []ast.Item, diags *diagnostic.Bag) *Scope {
+	scope := NewScope()
+	b := new(diags, scope)
+	for _, aItem := range aItems {
+		switch aItem := aItem.(type) {
+		case *ast.FnDecl:
+			fn := &bir.Fn{Decl: aItem, Out: lookupTy(aItem.Out)}
+			if _, exists := scope.Insert(aItem.Ident.Name, fn); exists {
+				b.error(aItem.Ident.Sp, "function `%s` already exists", aItem.Ident.Name)
+			}
+		case *ast.ErrItem:
+			continue
+		default:
+			panic("unreachable")
+		}
+	}
+
+	return scope
+}
+
+func (b *binder) bindFnDecl(fn *bir.Fn, diags *diagnostic.Bag, scope *Scope) {
+	prev := b.scope
+	b.scope = WithOuter(b.scope)
+	fn.In = b.bindParams(fn.Decl.In)
+	var ty bir.Ty
+	if fn.Decl.Out == nil {
+		ty = bir.TUnit
+	} else {
+		ty = lookupTy(fn.Decl.Out)
+		if ty == bir.TErr {
+			b.error(fn.Decl.Out.Sp, "cannot find type `%s` in this scope", fn.Decl.Out.Name)
+		}
+	}
+	body := b.bindExpr(fn.Decl.Body)
+	if ty != body.Type() {
+		if fn.Decl.Out != nil {
+			b.error(
+				fn.Decl.Out.Sp,
+				"expected this function to return `%s`, but got `%s`",
+				ty,
+				body.Type(),
+			)
+		} else {
+			// FIXME: change fn decl signature to always have a block expr
+			block := fn.Decl.Body.(*ast.BlockExpr)
+			sp := block.Exprs[len(block.Exprs)-1].Span()
+			b.error(sp, "expected this function to return `%s`, but got `%s`", ty, body.Type())
+		}
+	}
+	fn.Body = body
+	b.scope = prev
 }
 
 type binder struct {
@@ -20,62 +81,8 @@ type binder struct {
 	scope *Scope
 }
 
-func new(diags *diagnostic.Bag) binder {
-	return binder{diags: diags}
-}
-
-func (b *binder) bind(aItems []ast.Item) []bir.Item {
-	var items []bir.Item
-	for _, aItem := range aItems {
-		items = append(items, b.bindItem(aItem))
-	}
-	return items
-}
-
-func (b *binder) bindItem(item ast.Item) bir.Item {
-	switch item := item.(type) {
-	case *ast.FnDecl:
-		b.scope = WithOuter(b.scope)
-		return b.bindFnDecl(item)
-	case *ast.ErrItem:
-		return &bir.ErrItem{}
-	}
-	panic("unreachable")
-}
-
-func (b *binder) bindFnDecl(decl *ast.FnDecl) bir.Item {
-	params := b.bindParams(decl.In)
-	var ty bir.Ty
-	if decl.Out == nil {
-		ty = bir.TUnit
-	} else {
-		ty = lookupTy(decl.Out.Name)
-		if ty == bir.TErr {
-			b.error(decl.Out.Sp, "cannot find type `%s` in this scope", decl.Out.Name)
-			return &bir.ErrItem{}
-		}
-	}
-
-	ident := &bir.Ident{Name: decl.Ident.Name, Ty: ty}
-	body := b.bindExpr(decl.Body)
-	if ty != body.Type() {
-		if decl.Out != nil {
-			b.error(
-				decl.Out.Sp,
-				"expected this function to return `%s`, but got `%s`",
-				ty,
-				body.Type(),
-			)
-		} else {
-			// FIXME: change fn decl signature to always have a block expr
-			block := decl.Body.(*ast.BlockExpr)
-			sp := block.Exprs[len(block.Exprs)-1].Span()
-			b.error(sp, "expected this function to return `%s`, but got `%s`", ty, body.Type())
-		}
-		return &bir.ErrItem{}
-	}
-
-	return &bir.FnDecl{Ident: ident, In: params, Out: ty, Body: body}
+func new(diags *diagnostic.Bag, scope *Scope) binder {
+	return binder{diags: diags, scope: scope}
 }
 
 func (b *binder) bindParams(aParams []*ast.VarDecl) []*bir.VarDecl {
@@ -89,7 +96,7 @@ func (b *binder) bindParams(aParams []*ast.VarDecl) []*bir.VarDecl {
 			param := b.bindParam(aParam)
 			if param != nil {
 				params = append(params, param)
-				b.scope.Insert(param.Ident.Name, param)
+				b.scope.Insert(aParam.Ident.Name, param)
 			}
 		}
 	}
@@ -97,7 +104,7 @@ func (b *binder) bindParams(aParams []*ast.VarDecl) []*bir.VarDecl {
 }
 
 func (b *binder) bindParam(aParam *ast.VarDecl) *bir.VarDecl {
-	ty := lookupTy(aParam.Ty.Name)
+	ty := lookupTy(aParam.Ty)
 	if ty == bir.TErr {
 		b.error(aParam.Ty.Sp, "cannot find type `%s` in this scope", aParam.Ty.Name)
 		return nil
@@ -110,7 +117,7 @@ func (b *binder) bindExpr(expr ast.Expr) bir.Expr {
 	switch expr := expr.(type) {
 	case *ast.Ident:
 		if d, ok := b.scope.Get(expr.Name); ok {
-			return &bir.Ident{Name: expr.Name, Ty: d.Type()}
+			return d
 		}
 		b.error(expr.Sp, "could not find anything named `%s` in this scope", expr.Name)
 		return &bir.ErrExpr{}
@@ -118,7 +125,6 @@ func (b *binder) bindExpr(expr ast.Expr) bir.Expr {
 		if v, err := strconv.Atoi(expr.V); err == nil {
 			return &bir.IntegerLiteral{V: v}
 		}
-
 		b.error(expr.Sp, "`%s` is not valid integer", expr.V)
 		return &bir.ErrExpr{}
 	case *ast.BooleanLiteral:
@@ -138,13 +144,15 @@ func (b *binder) bindExpr(expr ast.Expr) bir.Expr {
 	case *ast.ErrExpr:
 		return &bir.ErrExpr{}
 	}
-
 	panic("unreachable")
 }
 
 func (b *binder) bindBinaryExpr(expr *ast.BinaryExpr) bir.Expr {
 	x := b.bindExpr(expr.X)
 	y := b.bindExpr(expr.Y)
+	if isErr(x) || isErr(y) {
+		return &bir.ErrExpr{}
+	}
 	op, ok := bir.BindBinOp(expr.Op.Kind, x.Type(), y.Type())
 
 	if !ok {
@@ -173,7 +181,7 @@ func (b *binder) bindLetExpr(expr *ast.LetExpr) bir.Expr {
 	var ty bir.Ty
 	init := b.bindExpr(expr.Init)
 	if expr.Decl.Ty != nil {
-		ty = lookupTy(expr.Decl.Ty.Name)
+		ty = lookupTy(expr.Decl.Ty)
 		if ty == bir.TErr {
 			b.error(expr.Decl.Ty.Sp, "cannot find type `%s` in this scope", expr.Decl.Ty.Name)
 			return &bir.ErrExpr{}
@@ -187,7 +195,7 @@ func (b *binder) bindLetExpr(expr *ast.LetExpr) bir.Expr {
 		ty = init.Type()
 	}
 
-	ident := &bir.Ident{Name: expr.Decl.Ident.Name, Ty: ty}
+	ident := &bir.Ident{Name: expr.Decl.Ident.Name}
 	decl := &bir.VarDecl{Ident: ident, Ty: ty}
 	le := &bir.LetExpr{Decl: decl, Init: init}
 	b.scope.Insert(expr.Decl.Ident.Name, decl)
@@ -198,8 +206,8 @@ func (b *binder) bindAssignExpr(expr *ast.AssignExpr) bir.Expr {
 	x := b.bindExpr(expr.X)
 	y := b.bindExpr(expr.Y)
 	switch x := x.(type) {
-	case *bir.Ident:
-		if d, ok := b.scope.Get(x.Name); ok {
+	case *bir.VarDecl:
+		if d, ok := b.scope.Get(x.Ident.Name); ok {
 			switch d := d.(type) {
 			case *bir.VarDecl:
 				if d.Type() != y.Type() {
@@ -211,7 +219,8 @@ func (b *binder) bindAssignExpr(expr *ast.AssignExpr) bir.Expr {
 				return &bir.ErrExpr{}
 			}
 		}
-		return &bir.AssignExpr{X: &bir.Ident{Name: x.Name, Ty: y.Type()}, Y: y}
+		ident := &bir.Ident{Name: x.Ident.Name}
+		return &bir.AssignExpr{X: &bir.VarDecl{Ident: ident, Ty: y.Type()}, Y: y}
 	default:
 		b.error(expr.X.Span(), "can only assign to identifiers for now")
 		return &bir.ErrExpr{}
@@ -254,6 +263,16 @@ func (b *binder) bindBlockExpr(expr *ast.BlockExpr) bir.Expr {
 
 func (b *binder) bindCallExpr(expr *ast.CallExpr) bir.Expr {
 	fn := b.bindExpr(expr.Fn)
+	switch fn := fn.(type) {
+	case *bir.Fn:
+		if len(fn.In) != len(expr.Args) {
+			b.error(expr.Fn.Span(), "this functions expects %d argument(s) but %d arguments were supplied", len(fn.In), len(expr.Args))
+			return &bir.ErrExpr{}
+		}
+	default:
+		b.error(expr.Fn.Span(), "expected a function")
+		return &bir.ErrExpr{}
+	}
 	var args []bir.Expr
 	if expr.Args != nil {
 		for _, arg := range expr.Args {
@@ -263,13 +282,26 @@ func (b *binder) bindCallExpr(expr *ast.CallExpr) bir.Expr {
 	return &bir.CallExpr{Fn: fn, Args: args}
 }
 
+func isErr(expr bir.Expr) bool {
+	switch expr.(type) {
+	case *bir.ErrExpr:
+		return true
+	default:
+		return false
+	}
+}
+
 func (b *binder) error(span span.Span, format string, a ...any) {
 	msg := fmt.Sprintf(format, a...)
 	diagnostic.NewBuilder(msg, span).WithLabel("here").Emit(b.diags)
 }
 
-func lookupTy(name string) bir.Ty {
-	switch name {
+func lookupTy(out *ast.Ident) bir.Ty {
+	if out == nil {
+		return bir.TUnit
+	}
+
+	switch out.Name {
 	case "int":
 		return bir.TInt
 	case "bool":
