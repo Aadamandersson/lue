@@ -3,7 +3,8 @@ package bir
 import (
 	"strconv"
 
-	"github.com/aadamandersson/lue/internal/ast"
+	"github.com/aadamandersson/lue/internal/ir"
+	"github.com/aadamandersson/lue/internal/ir/ast"
 )
 
 type (
@@ -26,7 +27,7 @@ type (
 	// A variable declaration.
 	// `ident: ty`
 	VarDecl struct {
-		Ident *Ident
+		Ident *ir.Ident
 		Ty    Ty
 	}
 
@@ -85,6 +86,10 @@ type (
 		Args []Expr
 	}
 
+	// An intrinsic.
+	// E.g., `println`
+	Intrinsic ir.Intrinsic
+
 	// Placeholder when we have some parse or bind error.
 	ErrExpr struct{}
 )
@@ -100,6 +105,7 @@ func (*AssignExpr) exprNode()     {}
 func (*IfExpr) exprNode()         {}
 func (*BlockExpr) exprNode()      {}
 func (*CallExpr) exprNode()       {}
+func (Intrinsic) exprNode()       {}
 func (*ErrExpr) exprNode()        {}
 
 func (e *Fn) Type() Ty             { return e.Out }
@@ -117,11 +123,8 @@ func (e *BlockExpr) Type() Ty {
 	return e.Exprs[len(e.Exprs)-1].Type()
 }
 func (e *CallExpr) Type() Ty { return e.Fn.Type() }
+func (e Intrinsic) Type() Ty { return TUnit }
 func (e *ErrExpr) Type() Ty  { return TErr }
-
-type Ident struct {
-	Name string
-}
 
 type Ty int
 

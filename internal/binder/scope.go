@@ -1,7 +1,7 @@
 package binder
 
 import (
-	"github.com/aadamandersson/lue/internal/bir"
+	"github.com/aadamandersson/lue/internal/ir/bir"
 )
 
 type Scope struct {

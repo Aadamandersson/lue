@@ -3,8 +3,8 @@ package parser
 import (
 	"fmt"
 
-	"github.com/aadamandersson/lue/internal/ast"
 	"github.com/aadamandersson/lue/internal/diagnostic"
+	"github.com/aadamandersson/lue/internal/ir/ast"
 	"github.com/aadamandersson/lue/internal/lexer"
 	"github.com/aadamandersson/lue/internal/span"
 	"github.com/aadamandersson/lue/internal/token"

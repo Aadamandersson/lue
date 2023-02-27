@@ -4,8 +4,9 @@ import (
 	"fmt"
 
 	"github.com/aadamandersson/lue/internal/binder"
-	"github.com/aadamandersson/lue/internal/bir"
 	"github.com/aadamandersson/lue/internal/diagnostic"
+	"github.com/aadamandersson/lue/internal/ir"
+	"github.com/aadamandersson/lue/internal/ir/bir"
 	"github.com/aadamandersson/lue/internal/parser"
 	"github.com/aadamandersson/lue/internal/span"
 )
@@ -22,13 +23,15 @@ type (
 		Params []*bir.VarDecl
 		Body   bir.Expr
 	}
-	Unit struct{}
+	Intrinsic ir.Intrinsic
+	Unit      struct{}
 )
 
-func (Integer) sealed() {}
-func (Boolean) sealed() {}
-func (Unit) sealed()    {}
-func (*Fn) sealed()     {}
+func (Integer) sealed()   {}
+func (Boolean) sealed()   {}
+func (*Fn) sealed()       {}
+func (Intrinsic) sealed() {}
+func (Unit) sealed()      {}
 
 func (i Integer) String() string {
 	return fmt.Sprintf("%d", i)
@@ -38,12 +41,16 @@ func (b Boolean) String() string {
 	return fmt.Sprintf("%t", b)
 }
 
-func (u Unit) String() string {
-	return "()"
-}
-
 func (f *Fn) String() string {
 	return "fn"
+}
+
+func (i Intrinsic) String() string {
+	return "intrinsic"
+}
+
+func (u Unit) String() string {
+	return "()"
 }
 
 func Evaluate(filename string, src []byte) bool {
@@ -106,6 +113,8 @@ func (e *evaluator) evalExpr(expr bir.Expr) (Value, bool) {
 		return e.evalBlockExpr(expr)
 	case *bir.CallExpr:
 		return e.evalCallExpr(expr)
+	case bir.Intrinsic:
+		return Intrinsic(expr), true
 	case *bir.ErrExpr:
 		return nil, false
 	}
@@ -216,7 +225,7 @@ func (e *evaluator) evalBlockExpr(block *bir.BlockExpr) (Value, bool) {
 		}
 		lastVal = value
 	}
-	fmt.Println(lastVal)
+
 	return lastVal, true
 }
 
@@ -226,26 +235,40 @@ func (e *evaluator) evalCallExpr(expr *bir.CallExpr) (Value, bool) {
 		return nil, ok
 	}
 
-	fn := fnVal.(*Fn)
-	if expr.Args == nil {
-		return e.evalExpr(fn.Body)
-	}
+	switch fn := fnVal.(type) {
+	case Intrinsic:
+		switch fn {
+		case Intrinsic(ir.IntrPrintln):
+			arg, ok := e.evalExpr(expr.Args[0])
+			if !ok {
+				return nil, ok
+			}
+			fmt.Println(arg)
+			return Unit{}, true
+		}
+	case *Fn:
+		if expr.Args == nil {
+			return e.evalExpr(fn.Body)
+		}
 
-	frame := make(map[string]Value, len(expr.Args))
-	for i, arg := range expr.Args {
-		argVal, ok := e.evalExpr(arg)
+		frame := make(map[string]Value, len(expr.Args))
+		for i, arg := range expr.Args {
+			argVal, ok := e.evalExpr(arg)
+			if !ok {
+				return nil, ok
+			}
+			param := fn.Params[i]
+			frame[param.Ident.Name] = argVal
+		}
+		e.locals = append(e.locals, frame)
+		v, ok := e.evalExpr(fn.Body)
+		e.locals = e.locals[:len(e.locals)-1]
 		if !ok {
 			return nil, ok
 		}
-		param := fn.Params[i]
-		frame[param.Ident.Name] = argVal
-	}
-	e.locals = append(e.locals, frame)
-	v, ok := e.evalExpr(fn.Body)
-	e.locals = e.locals[:len(e.locals)-1]
-	if !ok {
-		return nil, ok
+
+		return v, true
 	}
 
-	return v, true
+	panic("unreachable")
 }

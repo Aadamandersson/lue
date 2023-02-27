@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/aadamandersson/lue/internal/ast"
-	"github.com/aadamandersson/lue/internal/bir"
 	"github.com/aadamandersson/lue/internal/diagnostic"
+	"github.com/aadamandersson/lue/internal/ir"
+	"github.com/aadamandersson/lue/internal/ir/ast"
+	"github.com/aadamandersson/lue/internal/ir/bir"
 	"github.com/aadamandersson/lue/internal/span"
 )
 
@@ -38,6 +39,10 @@ func bindGlobalScope(aItems []ast.Item, diags *diagnostic.Bag) *Scope {
 		default:
 			panic("unreachable")
 		}
+	}
+
+	for _, intr := range ir.Intrinsics() {
+		scope.Insert(intr.String(), (bir.Intrinsic)(intr))
 	}
 
 	return scope
@@ -109,8 +114,7 @@ func (b *binder) bindParam(aParam *ast.VarDecl) *bir.VarDecl {
 		b.error(aParam.Ty.Sp, "cannot find type `%s` in this scope", aParam.Ty.Name)
 		return nil
 	}
-	ident := &bir.Ident{Name: aParam.Ident.Name}
-	return &bir.VarDecl{Ident: ident, Ty: ty}
+	return &bir.VarDecl{Ident: (*ir.Ident)(aParam.Ident), Ty: ty}
 }
 
 func (b *binder) bindExpr(expr ast.Expr) bir.Expr {
@@ -195,8 +199,7 @@ func (b *binder) bindLetExpr(expr *ast.LetExpr) bir.Expr {
 		ty = init.Type()
 	}
 
-	ident := &bir.Ident{Name: expr.Decl.Ident.Name}
-	decl := &bir.VarDecl{Ident: ident, Ty: ty}
+	decl := &bir.VarDecl{Ident: (*ir.Ident)(expr.Decl.Ident), Ty: ty}
 	le := &bir.LetExpr{Decl: decl, Init: init}
 	b.scope.Insert(expr.Decl.Ident.Name, decl)
 	return le
@@ -219,8 +222,8 @@ func (b *binder) bindAssignExpr(expr *ast.AssignExpr) bir.Expr {
 				return &bir.ErrExpr{}
 			}
 		}
-		ident := &bir.Ident{Name: x.Ident.Name}
-		return &bir.AssignExpr{X: &bir.VarDecl{Ident: ident, Ty: y.Type()}, Y: y}
+
+		return &bir.AssignExpr{X: &bir.VarDecl{Ident: x.Ident, Ty: y.Type()}, Y: y}
 	default:
 		b.error(expr.X.Span(), "can only assign to identifiers for now")
 		return &bir.ErrExpr{}
@@ -266,8 +269,18 @@ func (b *binder) bindCallExpr(expr *ast.CallExpr) bir.Expr {
 	switch fn := fn.(type) {
 	case *bir.Fn:
 		if len(fn.In) != len(expr.Args) {
-			b.error(expr.Fn.Span(), "this functions expects %d argument(s) but %d arguments were supplied", len(fn.In), len(expr.Args))
+			b.error(expr.Fn.Span(), "this functions expects %d argument(s), but %d arguments were supplied", len(fn.In), len(expr.Args))
 			return &bir.ErrExpr{}
+		}
+	case bir.Intrinsic:
+		switch (ir.Intrinsic)(fn) {
+		case ir.IntrPrintln:
+			if len(expr.Args) != 1 {
+				b.error(expr.Fn.Span(), "`println` expects 1 argument, but %d arguments were supplied", len(expr.Args))
+				return &bir.ErrExpr{}
+			}
+		default:
+			panic("unreachable")
 		}
 	default:
 		b.error(expr.Fn.Span(), "expected a function")

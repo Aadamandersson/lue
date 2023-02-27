@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/aadamandersson/lue/internal/ir"
 	"github.com/aadamandersson/lue/internal/span"
 	"github.com/aadamandersson/lue/internal/token"
 )
@@ -48,10 +49,7 @@ func (*ErrItem) itemNode() {}
 type (
 	// An identifier.
 	// E.g., `foo`
-	Ident struct {
-		Name string
-		Sp   span.Span
-	}
+	Ident ir.Ident
 
 	// An integer literal.
 	// E.g., `123`

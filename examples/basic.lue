@@ -4,5 +4,11 @@ fn add(x: int, y: int): int {
 }
 
 fn main() {
-    let result = add()
+    let result = add(1, 2)
+    println(result)
+    let x = true
+    let y = 2
+    println(1 + 2 * 3)
+    println(x)
+    println(y)
 }
