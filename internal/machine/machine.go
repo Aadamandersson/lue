@@ -1,8 +1,6 @@
-package evaluator
+package machine
 
 import (
-	"fmt"
-
 	"github.com/aadamandersson/lue/internal/binder"
 	"github.com/aadamandersson/lue/internal/diagnostic"
 	"github.com/aadamandersson/lue/internal/ir"
@@ -11,55 +9,13 @@ import (
 	"github.com/aadamandersson/lue/internal/span"
 )
 
-type Value interface {
-	String() string
-	sealed()
-}
-
-type (
-	Integer int
-	Boolean bool
-	Fn      struct {
-		Params []*bir.VarDecl
-		Body   bir.Expr
-	}
-	Intrinsic ir.Intrinsic
-	Unit      struct{}
-)
-
-func (Integer) sealed()   {}
-func (Boolean) sealed()   {}
-func (*Fn) sealed()       {}
-func (Intrinsic) sealed() {}
-func (Unit) sealed()      {}
-
-func (i Integer) String() string {
-	return fmt.Sprintf("%d", i)
-}
-
-func (b Boolean) String() string {
-	return fmt.Sprintf("%t", b)
-}
-
-func (f *Fn) String() string {
-	return "fn"
-}
-
-func (i Intrinsic) String() string {
-	return "intrinsic"
-}
-
-func (u Unit) String() string {
-	return "()"
-}
-
-func Evaluate(filename string, src []byte) bool {
+func Interpret(filename string, src []byte, kernel Kernel) bool {
 	file := span.NewSourceFile(filename, src)
 	diags := diagnostic.NewBag(file)
 	aItems := parser.Parse(src, diags)
 	fns := binder.Bind(aItems, diags)
-	e := new(fns, diags)
-	ok := e.eval()
+	m := new(fns, diags, kernel)
+	ok := m.interpret()
 
 	if !diags.Empty() {
 		diags.Dump()
@@ -68,29 +24,31 @@ func Evaluate(filename string, src []byte) bool {
 	return ok
 }
 
-type evaluator struct {
+type machine struct {
 	diags  *diagnostic.Bag
 	fns    map[string]*bir.Fn
 	locals []map[string]Value
+	kernel Kernel
 }
 
-func new(fns map[string]*bir.Fn, diags *diagnostic.Bag) evaluator {
+func new(fns map[string]*bir.Fn, diags *diagnostic.Bag, kernel Kernel) *machine {
 	locals := make([]map[string]Value, 1)
 	locals = append(locals, make(map[string]Value))
-	return evaluator{
+	return &machine{
 		diags:  diags,
 		fns:    fns,
 		locals: locals,
+		kernel: kernel,
 	}
 }
 
-func (e *evaluator) eval() bool {
+func (e *machine) interpret() bool {
 	// FIXME: ensure we have a main function
 	_, ok := e.evalExpr(e.fns["main"].Body)
 	return ok
 }
 
-func (e *evaluator) evalExpr(expr bir.Expr) (Value, bool) {
+func (e *machine) evalExpr(expr bir.Expr) (Value, bool) {
 	switch expr := expr.(type) {
 	case *bir.Fn:
 		fn := e.fns[expr.Decl.Ident.Name]
@@ -122,7 +80,7 @@ func (e *evaluator) evalExpr(expr bir.Expr) (Value, bool) {
 	panic("unreachable")
 }
 
-func (e *evaluator) evalBinaryExpr(expr *bir.BinaryExpr) (Value, bool) {
+func (e *machine) evalBinaryExpr(expr *bir.BinaryExpr) (Value, bool) {
 	x, ok := e.evalExpr(expr.X)
 	if !ok {
 		return nil, ok
@@ -170,7 +128,7 @@ func (e *evaluator) evalBinaryExpr(expr *bir.BinaryExpr) (Value, bool) {
 	panic("unreachable")
 }
 
-func (e *evaluator) evalLetExpr(expr *bir.LetExpr) (Value, bool) {
+func (e *machine) evalLetExpr(expr *bir.LetExpr) (Value, bool) {
 	v, ok := e.evalExpr(expr.Init)
 	if !ok {
 		return nil, ok
@@ -179,7 +137,7 @@ func (e *evaluator) evalLetExpr(expr *bir.LetExpr) (Value, bool) {
 	return Unit{}, true
 }
 
-func (e *evaluator) evalAssignExpr(expr *bir.AssignExpr) (Value, bool) {
+func (e *machine) evalAssignExpr(expr *bir.AssignExpr) (Value, bool) {
 	v, ok := e.evalExpr(expr.Y)
 	if !ok {
 		return nil, ok
@@ -191,7 +149,7 @@ func (e *evaluator) evalAssignExpr(expr *bir.AssignExpr) (Value, bool) {
 	return Unit{}, true
 }
 
-func (e *evaluator) evalIfExpr(expr *bir.IfExpr) (Value, bool) {
+func (e *machine) evalIfExpr(expr *bir.IfExpr) (Value, bool) {
 	cond, ok := e.evalExpr(expr.Cond)
 	if !ok {
 		return nil, ok
@@ -216,7 +174,7 @@ func (e *evaluator) evalIfExpr(expr *bir.IfExpr) (Value, bool) {
 	return Unit{}, true
 }
 
-func (e *evaluator) evalBlockExpr(block *bir.BlockExpr) (Value, bool) {
+func (e *machine) evalBlockExpr(block *bir.BlockExpr) (Value, bool) {
 	var lastVal Value
 	for _, expr := range block.Exprs {
 		value, ok := e.evalExpr(expr)
@@ -229,7 +187,7 @@ func (e *evaluator) evalBlockExpr(block *bir.BlockExpr) (Value, bool) {
 	return lastVal, true
 }
 
-func (e *evaluator) evalCallExpr(expr *bir.CallExpr) (Value, bool) {
+func (e *machine) evalCallExpr(expr *bir.CallExpr) (Value, bool) {
 	fnVal, ok := e.evalExpr(expr.Fn)
 	if !ok {
 		return nil, ok
@@ -243,7 +201,7 @@ func (e *evaluator) evalCallExpr(expr *bir.CallExpr) (Value, bool) {
 			if !ok {
 				return nil, ok
 			}
-			fmt.Println(arg)
+			e.kernel.println(arg.String())
 			return Unit{}, true
 		}
 	case *Fn:

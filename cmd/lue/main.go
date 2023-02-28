@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/aadamandersson/lue/internal/evaluator"
+	"github.com/aadamandersson/lue/internal/machine"
 )
 
 func main() {
@@ -14,7 +14,8 @@ func main() {
 		fmt.Printf("could not read file `%s`: %v\n", filename, err)
 		os.Exit(1)
 	}
-	ok := evaluator.Evaluate(filename, src)
+	kernel := machine.NewKernel()
+	ok := machine.Interpret(filename, src, kernel)
 	if !ok {
 		fmt.Printf("error: could not interpret `%s` due to previous errors.\n", filename)
 	}
