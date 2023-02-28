@@ -16,7 +16,6 @@ func Bind(items []ast.Item, diags *diagnostic.Bag) map[string]*bir.Fn {
 	fns := scope.Functions()
 
 	b := new(diags, scope)
-
 	for _, fn := range fns {
 		b.bindFnDecl(fn, diags, scope)
 	}
@@ -61,8 +60,18 @@ func (b *binder) bindFnDecl(fn *bir.Fn, diags *diagnostic.Bag, scope *Scope) {
 			b.error(fn.Decl.Out.Sp, "cannot find type `%s` in this scope", fn.Decl.Out.Name)
 		}
 	}
+
 	body := b.bindExpr(fn.Decl.Body)
-	if ty != body.Type() {
+	if blk, ok := body.(*bir.BlockExpr); ok {
+		if ty != bir.TUnit && len(blk.Exprs) == 0 {
+			b.error(
+				fn.Decl.Out.Sp,
+				"expected this function to return `%s`, but the body is empty",
+				ty,
+			)
+			body = &bir.ErrExpr{}
+		}
+	} else if ty != body.Type() {
 		if fn.Decl.Out != nil {
 			b.error(
 				fn.Decl.Out.Sp,
@@ -76,6 +85,7 @@ func (b *binder) bindFnDecl(fn *bir.Fn, diags *diagnostic.Bag, scope *Scope) {
 			sp := block.Exprs[len(block.Exprs)-1].Span()
 			b.error(sp, "expected this function to return `%s`, but got `%s`", ty, body.Type())
 		}
+		body = &bir.ErrExpr{}
 	}
 	fn.Body = body
 	b.scope = prev
@@ -268,15 +278,24 @@ func (b *binder) bindCallExpr(expr *ast.CallExpr) bir.Expr {
 	fn := b.bindExpr(expr.Fn)
 	switch fn := fn.(type) {
 	case *bir.Fn:
-		if len(fn.In) != len(expr.Args) {
-			b.error(expr.Fn.Span(), "this functions expects %d argument(s), but %d arguments were supplied", len(fn.In), len(expr.Args))
+		if len(fn.Decl.In) != len(expr.Args) {
+			b.error(
+				expr.Fn.Span(),
+				"this functions expects %d argument(s), but %d argument(s) were supplied",
+				len(fn.In),
+				len(expr.Args),
+			)
 			return &bir.ErrExpr{}
 		}
 	case bir.Intrinsic:
 		switch (ir.Intrinsic)(fn) {
 		case ir.IntrPrintln:
 			if len(expr.Args) != 1 {
-				b.error(expr.Fn.Span(), "`println` expects 1 argument, but %d arguments were supplied", len(expr.Args))
+				b.error(
+					expr.Fn.Span(),
+					"`println` expects 1 argument, but %d argument(s) were supplied",
+					len(expr.Args),
+				)
 				return &bir.ErrExpr{}
 			}
 		default:
