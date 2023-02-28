@@ -201,7 +201,7 @@ func (e *machine) evalCallExpr(expr *bir.CallExpr) (Value, bool) {
 			if !ok {
 				return nil, ok
 			}
-			e.kernel.println(arg.String())
+			e.kernel.Println(arg.String())
 			return Unit{}, true
 		}
 	case *Fn:
