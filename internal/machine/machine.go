@@ -42,35 +42,39 @@ func new(fns map[string]*bir.Fn, diags *diagnostic.Bag, kernel Kernel) *machine 
 	}
 }
 
-func (e *machine) interpret() bool {
+func (m *machine) interpret() bool {
 	// FIXME: ensure we have a main function
-	_, ok := e.evalExpr(e.fns["main"].Body)
+	_, ok := m.evalExpr(m.fns["main"].Body)
 	return ok
 }
 
-func (e *machine) evalExpr(expr bir.Expr) (Value, bool) {
+func (m *machine) evalExpr(expr bir.Expr) (Value, bool) {
 	switch expr := expr.(type) {
 	case *bir.Fn:
-		fn := e.fns[expr.Decl.Ident.Name]
+		fn := m.fns[expr.Decl.Ident.Name]
 		return &Fn{Params: fn.In, Body: fn.Body}, true
 	case *bir.VarDecl:
-		return e.locals[len(e.locals)-1][expr.Ident.Name], true
+		for i := len(m.locals) - 1; i >= 0; i-- {
+			if local, ok := m.locals[i][expr.Ident.Name]; ok {
+				return local, true
+			}
+		}
 	case *bir.IntegerLiteral:
 		return Integer(expr.V), true
 	case *bir.BooleanLiteral:
 		return Boolean(expr.V), true
 	case *bir.BinaryExpr:
-		return e.evalBinaryExpr(expr)
+		return m.evalBinaryExpr(expr)
 	case *bir.LetExpr:
-		return e.evalLetExpr(expr)
+		return m.evalLetExpr(expr)
 	case *bir.AssignExpr:
-		return e.evalAssignExpr(expr)
+		return m.evalAssignExpr(expr)
 	case *bir.IfExpr:
-		return e.evalIfExpr(expr)
+		return m.evalIfExpr(expr)
 	case *bir.BlockExpr:
-		return e.evalBlockExpr(expr)
+		return m.evalBlockExpr(expr)
 	case *bir.CallExpr:
-		return e.evalCallExpr(expr)
+		return m.evalCallExpr(expr)
 	case bir.Intrinsic:
 		return Intrinsic(expr), true
 	case *bir.ErrExpr:
@@ -80,13 +84,13 @@ func (e *machine) evalExpr(expr bir.Expr) (Value, bool) {
 	panic("unreachable")
 }
 
-func (e *machine) evalBinaryExpr(expr *bir.BinaryExpr) (Value, bool) {
-	x, ok := e.evalExpr(expr.X)
+func (m *machine) evalBinaryExpr(expr *bir.BinaryExpr) (Value, bool) {
+	x, ok := m.evalExpr(expr.X)
 	if !ok {
 		return nil, ok
 	}
 
-	y, ok := e.evalExpr(expr.Y)
+	y, ok := m.evalExpr(expr.Y)
 	if !ok {
 		return nil, ok
 	}
@@ -128,35 +132,35 @@ func (e *machine) evalBinaryExpr(expr *bir.BinaryExpr) (Value, bool) {
 	panic("unreachable")
 }
 
-func (e *machine) evalLetExpr(expr *bir.LetExpr) (Value, bool) {
-	v, ok := e.evalExpr(expr.Init)
+func (m *machine) evalLetExpr(expr *bir.LetExpr) (Value, bool) {
+	v, ok := m.evalExpr(expr.Init)
 	if !ok {
 		return nil, ok
 	}
-	e.locals[len(e.locals)-1][expr.Decl.Ident.Name] = v
+	m.locals[len(m.locals)-1][expr.Decl.Ident.Name] = v
 	return Unit{}, true
 }
 
-func (e *machine) evalAssignExpr(expr *bir.AssignExpr) (Value, bool) {
-	v, ok := e.evalExpr(expr.Y)
+func (m *machine) evalAssignExpr(expr *bir.AssignExpr) (Value, bool) {
+	v, ok := m.evalExpr(expr.Y)
 	if !ok {
 		return nil, ok
 	}
 	// TODO: we ensure in the binder that this will always be an Ident for now,
 	// but eventually we want to support more types.
 	decl := expr.X.(*bir.VarDecl)
-	e.locals[len(e.locals)-1][decl.Ident.Name] = v
+	m.locals[len(m.locals)-1][decl.Ident.Name] = v
 	return Unit{}, true
 }
 
-func (e *machine) evalIfExpr(expr *bir.IfExpr) (Value, bool) {
-	cond, ok := e.evalExpr(expr.Cond)
+func (m *machine) evalIfExpr(expr *bir.IfExpr) (Value, bool) {
+	cond, ok := m.evalExpr(expr.Cond)
 	if !ok {
 		return nil, ok
 	}
 
 	if cond.(Boolean) {
-		v, ok := e.evalExpr(expr.Then)
+		v, ok := m.evalExpr(expr.Then)
 		if !ok {
 			return nil, ok
 		}
@@ -164,7 +168,7 @@ func (e *machine) evalIfExpr(expr *bir.IfExpr) (Value, bool) {
 	}
 
 	if expr.Else != nil {
-		v, ok := e.evalExpr(expr.Else)
+		v, ok := m.evalExpr(expr.Else)
 		if !ok {
 			return nil, ok
 		}
@@ -174,21 +178,22 @@ func (e *machine) evalIfExpr(expr *bir.IfExpr) (Value, bool) {
 	return Unit{}, true
 }
 
-func (e *machine) evalBlockExpr(block *bir.BlockExpr) (Value, bool) {
+func (m *machine) evalBlockExpr(block *bir.BlockExpr) (Value, bool) {
 	var lastVal Value
+	m.locals = append(m.locals, make(map[string]Value))
 	for _, expr := range block.Exprs {
-		value, ok := e.evalExpr(expr)
+		value, ok := m.evalExpr(expr)
 		if !ok {
 			return nil, ok
 		}
 		lastVal = value
 	}
-
+	m.locals = m.locals[:len(m.locals)-1]
 	return lastVal, true
 }
 
-func (e *machine) evalCallExpr(expr *bir.CallExpr) (Value, bool) {
-	fnVal, ok := e.evalExpr(expr.Fn)
+func (m *machine) evalCallExpr(expr *bir.CallExpr) (Value, bool) {
+	fnVal, ok := m.evalExpr(expr.Fn)
 	if !ok {
 		return nil, ok
 	}
@@ -197,30 +202,30 @@ func (e *machine) evalCallExpr(expr *bir.CallExpr) (Value, bool) {
 	case Intrinsic:
 		switch fn {
 		case Intrinsic(ir.IntrPrintln):
-			arg, ok := e.evalExpr(expr.Args[0])
+			arg, ok := m.evalExpr(expr.Args[0])
 			if !ok {
 				return nil, ok
 			}
-			e.kernel.Println(arg.String())
+			m.kernel.Println(arg.String())
 			return Unit{}, true
 		}
 	case *Fn:
 		if expr.Args == nil {
-			return e.evalExpr(fn.Body)
+			return m.evalExpr(fn.Body)
 		}
 
 		frame := make(map[string]Value, len(expr.Args))
 		for i, arg := range expr.Args {
-			argVal, ok := e.evalExpr(arg)
+			argVal, ok := m.evalExpr(arg)
 			if !ok {
 				return nil, ok
 			}
 			param := fn.Params[i]
 			frame[param.Ident.Name] = argVal
 		}
-		e.locals = append(e.locals, frame)
-		v, ok := e.evalExpr(fn.Body)
-		e.locals = e.locals[:len(e.locals)-1]
+		m.locals = append(m.locals, frame)
+		v, ok := m.evalExpr(fn.Body)
+		m.locals = m.locals[:len(m.locals)-1]
 		if !ok {
 			return nil, ok
 		}

@@ -1,0 +1,17 @@
+// Output:
+// 3
+// 2
+// 1
+
+fn main() {
+    let a = 1
+    if true {
+        let a = 2
+        if true {
+            let a = 3
+            println(a)
+        }
+        println(a)
+    }
+    println(a)
+}
