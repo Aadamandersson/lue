@@ -143,6 +143,8 @@ func (b *binder) bindExpr(expr ast.Expr) bir.Expr {
 		return &bir.ErrExpr{}
 	case *ast.BooleanLiteral:
 		return &bir.BooleanLiteral{V: expr.V}
+	case *ast.StringLiteral:
+		return &bir.StringLiteral{V: expr.V}
 	case *ast.BinaryExpr:
 		return b.bindBinaryExpr(expr)
 	case *ast.LetExpr:
@@ -338,6 +340,8 @@ func lookupTy(out *ast.Ident) bir.Ty {
 		return bir.TInt
 	case "bool":
 		return bir.TBool
+	case "string":
+		return bir.TString
 	default:
 		return bir.TErr
 	}

@@ -1,0 +1,16 @@
+// Output:
+// hello
+// abc == abc
+// ab != cd
+
+fn main() {
+    let s: string = "hello"
+    println(s)
+    if "abc" == "abc" {
+        println("abc == abc")
+    }
+
+    if "ab" != "cd" {
+        println("ab != cd")
+    }
+}

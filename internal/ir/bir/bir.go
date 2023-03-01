@@ -43,6 +43,12 @@ type (
 		V bool
 	}
 
+	// A string literal.
+	// E.g., `"foo"`
+	StringLiteral struct {
+		V string
+	}
+
 	// A binary expression.
 	// E.g., `x + y`
 	BinaryExpr struct {
@@ -99,6 +105,7 @@ func (*Fn) exprNode()             {}
 func (*VarDecl) exprNode()        {}
 func (*IntegerLiteral) exprNode() {}
 func (*BooleanLiteral) exprNode() {}
+func (*StringLiteral) exprNode()  {}
 func (*BinaryExpr) exprNode()     {}
 func (*LetExpr) exprNode()        {}
 func (*AssignExpr) exprNode()     {}
@@ -112,6 +119,7 @@ func (e *Fn) Type() Ty             { return e.Out }
 func (e *VarDecl) Type() Ty        { return e.Ty }
 func (e *IntegerLiteral) Type() Ty { return TInt }
 func (e *BooleanLiteral) Type() Ty { return TBool }
+func (e *StringLiteral) Type() Ty  { return TString }
 func (e *BinaryExpr) Type() Ty     { return e.Op.Ty }
 func (e *LetExpr) Type() Ty        { return TUnit }
 func (e *AssignExpr) Type() Ty     { return TUnit }
@@ -132,14 +140,16 @@ const (
 	TErr Ty = iota
 	TInt
 	TBool
+	TString
 	TUnit
 )
 
 var tys = [...]string{
-	TErr:  "?",
-	TInt:  "int",
-	TBool: "bool",
-	TUnit: "()",
+	TErr:    "?",
+	TInt:    "int",
+	TBool:   "bool",
+	TString: "string",
+	TUnit:   "()",
 }
 
 func (t Ty) String() string {
@@ -172,9 +182,11 @@ var binOps = [...]struct {
 
 	{ast.Eq, TInt, TInt, BinOp{Kind: Eq, Ty: TBool}},
 	{ast.Eq, TBool, TBool, BinOp{Kind: Eq, Ty: TBool}},
+	{ast.Eq, TString, TString, BinOp{Kind: Eq, Ty: TBool}},
 
 	{ast.Ne, TInt, TInt, BinOp{Kind: Ne, Ty: TBool}},
 	{ast.Ne, TBool, TBool, BinOp{Kind: Ne, Ty: TBool}},
+	{ast.Ne, TString, TString, BinOp{Kind: Ne, Ty: TBool}},
 }
 
 func BindBinOp(astOp ast.BinOpKind, xTy, yTy Ty) (BinOp, bool) {

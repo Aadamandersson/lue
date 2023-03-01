@@ -1,6 +1,6 @@
 // Output:
-// 123
+// hello
 
 fn main() {
-    println(123)
+    println("hello")
 }

@@ -22,6 +22,8 @@ var cases = []struct {
 	{"_foo", token.New(token.Ident, "_foo", span.New(0, 4))},
 	{"foo123", token.New(token.Ident, "foo123", span.New(0, 6))},
 	{"123", token.New(token.Number, "123", span.New(0, 3))},
+	{`"foo"`, token.New(token.String, "foo", span.New(0, 5))},
+	{`"foo\"bar\""`, token.New(token.String, `foo"bar"`, span.New(0, 12))},
 	{"+", token.New(token.Plus, "", span.New(0, 1))},
 	{"-", token.New(token.Minus, "", span.New(0, 1))},
 	{"*", token.New(token.Star, "", span.New(0, 1))},

@@ -65,6 +65,13 @@ type (
 		Sp span.Span
 	}
 
+	// A string literal.
+	// E.g., `"foo"`
+	StringLiteral struct {
+		V  string
+		Sp span.Span
+	}
+
 	// A binary expression.
 	// E.g., `x + y`
 	BinaryExpr struct {
@@ -124,6 +131,7 @@ type (
 func (*Ident) exprNode()          {}
 func (*IntegerLiteral) exprNode() {}
 func (*BooleanLiteral) exprNode() {}
+func (*StringLiteral) exprNode()  {}
 func (*BinaryExpr) exprNode()     {}
 func (*LetExpr) exprNode()        {}
 func (*AssignExpr) exprNode()     {}
@@ -135,6 +143,7 @@ func (*ErrExpr) exprNode()        {}
 func (e *Ident) Span() span.Span          { return e.Sp }
 func (e *IntegerLiteral) Span() span.Span { return e.Sp }
 func (e *BooleanLiteral) Span() span.Span { return e.Sp }
+func (e *StringLiteral) Span() span.Span  { return e.Sp }
 func (e *BinaryExpr) Span() span.Span     { return e.Sp }
 func (e *LetExpr) Span() span.Span        { return e.Sp }
 func (e *AssignExpr) Span() span.Span     { return e.Sp }

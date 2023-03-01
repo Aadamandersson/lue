@@ -15,6 +15,7 @@ type Value interface {
 type (
 	Integer int
 	Boolean bool
+	String  string
 	Fn      struct {
 		Params []*bir.VarDecl
 		Body   bir.Expr
@@ -25,6 +26,7 @@ type (
 
 func (Integer) sealed()   {}
 func (Boolean) sealed()   {}
+func (String) sealed()    {}
 func (*Fn) sealed()       {}
 func (Intrinsic) sealed() {}
 func (Unit) sealed()      {}
@@ -35,6 +37,10 @@ func (i Integer) String() string {
 
 func (b Boolean) String() string {
 	return fmt.Sprintf("%t", b)
+}
+
+func (s String) String() string {
+	return string(s)
 }
 
 func (f *Fn) String() string {

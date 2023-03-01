@@ -230,6 +230,10 @@ func (p *parser) parseBotExpr() ast.Expr {
 		return &ast.IntegerLiteral{V: p.prevTok.Lit, Sp: sp}
 	}
 
+	if sp, ok := p.eat(token.String); ok {
+		return &ast.StringLiteral{V: p.prevTok.Lit, Sp: sp}
+	}
+
 	if sp, ok := p.eat(token.False); ok {
 		return &ast.BooleanLiteral{V: false, Sp: sp}
 	}

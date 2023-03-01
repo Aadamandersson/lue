@@ -13,6 +13,7 @@ const (
 	Eof                 // End of file.
 	Ident               // E.g., `foo`
 	Number              // E.g., `123`
+	String              // E.g., `"foo"`
 	Plus                // `+`
 	Minus               // `-`
 	Star                // `*`
@@ -44,6 +45,7 @@ var tokens = [...]string{
 	Eof:     "eof",
 	Ident:   "identifier",
 	Number:  "number",
+	String:  "string",
 	Plus:    "+",
 	Minus:   "-",
 	Star:    "*",

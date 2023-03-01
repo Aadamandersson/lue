@@ -63,6 +63,8 @@ func (m *machine) evalExpr(expr bir.Expr) (Value, bool) {
 		return Integer(expr.V), true
 	case *bir.BooleanLiteral:
 		return Boolean(expr.V), true
+	case *bir.StringLiteral:
+		return String(expr.V), true
 	case *bir.BinaryExpr:
 		return m.evalBinaryExpr(expr)
 	case *bir.LetExpr:
@@ -122,6 +124,14 @@ func (m *machine) evalBinaryExpr(expr *bir.BinaryExpr) (Value, bool) {
 		}
 	case Boolean:
 		y := y.(Boolean)
+		switch expr.Op.Kind {
+		case bir.Eq:
+			return Boolean(x == y), true
+		case bir.Ne:
+			return Boolean(x != y), true
+		}
+	case String:
+		y := y.(String)
 		switch expr.Op.Kind {
 		case bir.Eq:
 			return Boolean(x == y), true

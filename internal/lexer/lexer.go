@@ -93,6 +93,8 @@ func (l *lexer) lexToken(first byte) (token.Kind, string) {
 		return token.RBrace, ""
 	case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 		return l.lexNumeric(first)
+	case '"':
+		return l.lexString()
 	default:
 		if isIdentStart(first) {
 			return l.lexIdent(first)
@@ -107,6 +109,38 @@ func (l *lexer) lexNumeric(first byte) (token.Kind, string) {
 	return token.Number, s
 }
 
+// lexString lexes a string and returns its kind and literal value.
+// `"` already eaten.
+func (l *lexer) lexString() (token.Kind, string) {
+	var builder strings.Builder
+loop:
+	for {
+		b := l.peek()
+		switch b {
+		case 0, '\r', '\n':
+			panic("TODO: report error - unterminated string")
+		case '\\':
+			l.next()
+			escByte := l.peek()
+			switch escByte {
+			case '"', '\\':
+				builder.WriteByte(escByte)
+				l.next()
+			default:
+				panic("TODO: report error - unknown character escape")
+			}
+		case '"':
+			break loop
+		default:
+			l.next()
+			builder.WriteByte(b)
+		}
+	}
+	l.next()
+	return token.String, builder.String()
+}
+
+// lexIdent lexes an identifier and returns its kind and literal value.
 func (l *lexer) lexIdent(first byte) (token.Kind, string) {
 	s := l.collectString(first, isIdentCont)
 	return token.Lookup(s), s
