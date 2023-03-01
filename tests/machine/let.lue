@@ -1,0 +1,16 @@
+// Output:
+// 123
+// true
+// 456
+// false
+
+fn main() {
+    let a: int = 123
+    println(a)
+    let b: bool = true
+    println(b)
+    let c = 456
+    println(c)
+    let d = false
+    println(d)
+}

@@ -1,0 +1,49 @@
+// Output:
+// 1
+// 2
+// 3
+// 4
+// 5
+// 6
+
+fn main() {
+    if 1 == 1 {
+        println(1)
+    }
+
+    if 1 != 2 {
+        println(2) 
+    }
+
+    if 1 <= 1 {
+        println(3)
+    }
+
+    if 1 >= 1 {
+        println(4)
+    }
+
+    if 0 < 1 {
+        println(5)
+    }
+
+    if 1 > 0 {
+        println(6)
+    }
+
+    if 1 == 2 {
+        println(7)
+    }
+
+    if 1 != 1 {
+        println(8)
+    }
+
+    if 1 > 2 {
+        println(9)
+    }
+
+    if 2 < 1 {
+        println(10)
+    }
+}

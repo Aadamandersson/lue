@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"flag"
 	"fmt"
 	"io/fs"
 	"os"
@@ -22,25 +21,13 @@ func (k *kernel) Println(text string) {
 }
 
 func main() {
-	var blessed bool
-	flag.BoolVar(
-		&blessed,
-		"bless",
-		false,
-		"Set to true to generate the expected output from the machine.",
-	)
-	flag.Parse()
-
-	fn := func(filename string, f fs.DirEntry, err error) error {
-		return testFile(blessed, filename, f, err)
-	}
-	err := filepath.WalkDir("tests/", fn)
+	err := filepath.WalkDir("tests/", testFile)
 	if err != nil {
 		fmt.Println(err)
 	}
 }
 
-func testFile(blessed bool, filename string, f fs.DirEntry, err error) error {
+func testFile(filename string, f fs.DirEntry, err error) error {
 	if err != nil {
 		return err
 	}
@@ -50,9 +37,7 @@ func testFile(blessed bool, filename string, f fs.DirEntry, err error) error {
 	}
 
 	if filepath.Ext(filename) != ".lue" {
-		if filepath.Ext(filename) != ".stdout" {
-			fmt.Printf("skipping `%s`\n", filename)
-		}
+		fmt.Printf("skipping `%s`\n", filename)
 		return nil
 	}
 
@@ -63,13 +48,21 @@ func testFile(blessed bool, filename string, f fs.DirEntry, err error) error {
 
 	kernel := &kernel{}
 	machine.Interpret(filename, src, kernel)
-	if blessed {
-		err := blessFile(filename, kernel.Buf)
-		if err != nil {
-			return err
-		}
+
+	actual := kernel.Buf
+	expected := expectedOutput(src, filename)
+	if actual != expected {
+		fmt.Printf("test `%s` failed\n\n", filename)
+		fmt.Printf("actual:\n%s\n", actual)
+		fmt.Printf("expected:\n%s\n", expected)
+	} else {
+		fmt.Printf("test `%s` passed\n", filename)
 	}
 
+	return nil
+}
+
+func expectedOutput(src []byte, filename string) string {
 	outputRe := regexp.MustCompile(`^//[\s]*Output:`)
 	expectRe := regexp.MustCompile(`^//[\s]*(?P<value>.*)`)
 
@@ -92,60 +85,5 @@ func testFile(blessed bool, filename string, f fs.DirEntry, err error) error {
 
 		firstLine = false
 	}
-
-	got := kernel.Buf
-	want := outBuilder.String()
-	if got != want {
-		fmt.Printf("test `%s` failed\n\n", filename)
-		fmt.Printf("got:\n%s\n", got)
-		fmt.Printf("want:\n%s\n", want)
-	} else {
-		fmt.Printf("test `%s` passed\n", filename)
-	}
-
-	return nil
-}
-
-/*
-func expectedOutput(blessed bool, filename string, kernel *kernel) (string, error) {
-	testDir := strings.TrimSuffix(filename, filepath.Ext(filename))
-	stdoutFile := fmt.Sprintf(
-		"%s/%s.stdout",
-		testDir,
-		filepath.Base(testDir),
-	)
-
-	if blessed {
-		return blessFile(testDir, stdoutFile, kernel.Buf)
-	}
-
-	stdoutBytes, err := os.ReadFile(stdoutFile)
-	if err != nil {
-		return "", fmt.Errorf("could not read stdout file `%s`: %v", stdoutFile, err)
-	}
-	return string(stdoutBytes), nil
-}*/
-
-func blessFile(filename string, with string) error {
-	testDir := strings.TrimSuffix(filename, filepath.Ext(filename))
-	stdoutFile := fmt.Sprintf(
-		"%s/%s.stdout",
-		testDir,
-		filepath.Base(testDir),
-	)
-	if _, err := os.Stat(testDir); err == os.ErrNotExist {
-		err := os.Mkdir(testDir, os.ModeDir)
-		if err != nil {
-			return err
-		}
-	}
-
-	f, err := os.Create(stdoutFile)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	f.WriteString(with)
-	return nil
+	return outBuilder.String()
 }

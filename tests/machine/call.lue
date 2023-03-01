@@ -1,0 +1,22 @@
+// Output:
+// 46
+// 34
+
+fn add(x: int, y: int): int {
+    x + y
+}
+
+fn fib(n: int): int {
+    if n <= 1 {
+        n
+    } else {
+        fib(n - 1) + fib(n - 2)
+    }
+}
+
+fn main() {
+    let result = add(12, 34) 
+    println(result)
+    let result2 = fib(9)
+    println(result2)
+}
