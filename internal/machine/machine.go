@@ -43,8 +43,12 @@ func new(fns map[string]*bir.Fn, diags *diagnostic.Bag, kernel Kernel) *machine 
 }
 
 func (m *machine) interpret() bool {
-	// FIXME: ensure we have a main function
-	_, ok := m.evalExpr(m.fns["main"].Body)
+	main, ok := m.fns["main"]
+	if !ok {
+		m.kernel.Println("no `main` function found")
+		return false
+	}
+	_, ok = m.evalExpr(main.Body)
 	return ok
 }
 
