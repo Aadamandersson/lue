@@ -1,24 +1,27 @@
 ifeq ($(OS), Windows_NT)
 	RM = del
-	OUT = bin\lue.exe
-	CMD = cmd\lue\main.go
+	OUT_LUE = bin\lue.exe
+	CMD_LUE = cmd\lue\main.go
+	OUT_LUET = bin\luet.exe
+	CMD_LUET = cmd\luet\main.go
 else
 	RM = rm
-	OUT = bin/lue
-	CMD = cmd/lue/main.go
+	OUT_LUE = bin/lue
+	CMD_LUE = cmd/lue/main.go
+	OUT_LUET = bin/luet
+	CMD_LUET = cmd/luet/main.go
 endif
 
 all: test build
 
-run: build
-	./${OUT}
-
 build:
-	go build -o ${OUT} ${CMD}
+	go build -o ${OUT_LUE} ${CMD_LUE}
+	go build -o ${OUT_LUET} ${CMD_LUET}
 
 test:
 	go test ./...
 
 .PHONY: all test clean
 clean:
-	${RM} ${OUT}
+	${RM} ${OUT_LUE}
+	${RM} ${OUT_LUET}

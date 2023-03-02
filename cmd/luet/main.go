@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"io/fs"
 	"os"
@@ -21,21 +22,39 @@ func (k *kernel) Println(text string) {
 }
 
 func main() {
-	err := filepath.WalkDir("tests/", testFile)
+	var path string
+	flag.StringVar(&path, "path", "tests/", "Path to .lue file to test")
+	flag.Parse()
+
+	fi, err := os.Stat(path)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	if fi.IsDir() {
+		walkFn := func(filename string, f fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+
+			if f.IsDir() {
+				return nil
+			}
+
+			return testFile(filename)
+		}
+		err = filepath.WalkDir(path, walkFn)
+	} else {
+		err = testFile(path)
+	}
+
 	if err != nil {
 		fmt.Println(err)
 	}
 }
 
-func testFile(filename string, f fs.DirEntry, err error) error {
-	if err != nil {
-		return err
-	}
-
-	if f.IsDir() {
-		return nil
-	}
-
+func testFile(filename string) error {
 	if filepath.Ext(filename) != ".lue" {
 		fmt.Printf("skipping `%s`\n", filename)
 		return nil
