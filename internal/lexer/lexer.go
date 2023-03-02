@@ -3,18 +3,23 @@ package lexer
 import (
 	"strings"
 
+	"github.com/aadamandersson/lue/internal/session"
 	"github.com/aadamandersson/lue/internal/span"
 	"github.com/aadamandersson/lue/internal/token"
 )
 
-func Lex(src []byte) []token.Token {
-	l := lexer{src: src}
+func Lex(sess *session.Session) []token.Token {
+	l := new(sess)
 	return l.Lex()
 }
 
 type lexer struct {
 	src []byte
 	pos int // Current position in src.
+}
+
+func new(sess *session.Session) *lexer {
+	return &lexer{src: sess.File.Src}
 }
 
 func (l *lexer) Lex() []token.Token {

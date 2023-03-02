@@ -2,7 +2,7 @@ package span
 
 type SourceFile struct {
 	Name  string
-	src   []byte
+	Src   []byte
 	lines []int // Line beginnings in src.
 }
 
@@ -10,7 +10,7 @@ func NewSourceFile(name string, src []byte) *SourceFile {
 	lines := lines(src)
 	return &SourceFile{
 		Name:  name,
-		src:   src,
+		Src:   src,
 		lines: lines,
 	}
 }
@@ -50,9 +50,9 @@ func (f *SourceFile) LinePos(line int) int {
 // LineSlice returns the bytes between start and end in src.
 // If the given bounds are outside src, the zero value is returned.
 func (f *SourceFile) LineSlice(lo, hi int) []byte {
-	len := len(f.src)
+	len := len(f.Src)
 	if lo < len && len >= hi {
-		return f.src[lo:hi]
+		return f.Src[lo:hi]
 	}
 	return *new([]byte)
 }

@@ -8,24 +8,25 @@ import (
 	"github.com/aadamandersson/lue/internal/ir"
 	"github.com/aadamandersson/lue/internal/ir/ast"
 	"github.com/aadamandersson/lue/internal/ir/bir"
+	"github.com/aadamandersson/lue/internal/session"
 	"github.com/aadamandersson/lue/internal/span"
 )
 
-func Bind(items []ast.Item, diags *diagnostic.Bag) map[string]*bir.Fn {
-	scope := bindGlobalScope(items, diags)
+func Bind(items []ast.Item, sess *session.Session) map[string]*bir.Fn {
+	scope := bindGlobalScope(items, sess)
 	fns := scope.Functions()
 
-	b := new(diags, scope)
+	b := new(sess, scope)
 	for _, fn := range fns {
-		b.bindFnDecl(fn, diags, scope)
+		b.bindFnDecl(fn, sess, scope)
 	}
 
 	return fns
 }
 
-func bindGlobalScope(aItems []ast.Item, diags *diagnostic.Bag) *Scope {
+func bindGlobalScope(aItems []ast.Item, sess *session.Session) *Scope {
 	scope := NewScope()
-	b := new(diags, scope)
+	b := new(sess, scope)
 	for _, aItem := range aItems {
 		switch aItem := aItem.(type) {
 		case *ast.FnDecl:
@@ -47,7 +48,7 @@ func bindGlobalScope(aItems []ast.Item, diags *diagnostic.Bag) *Scope {
 	return scope
 }
 
-func (b *binder) bindFnDecl(fn *bir.Fn, diags *diagnostic.Bag, scope *Scope) {
+func (b *binder) bindFnDecl(fn *bir.Fn, sess *session.Session, scope *Scope) {
 	prev := b.scope
 	b.fn = fn
 	b.scope = WithOuter(b.scope)
@@ -93,13 +94,13 @@ func (b *binder) bindFnDecl(fn *bir.Fn, diags *diagnostic.Bag, scope *Scope) {
 }
 
 type binder struct {
-	diags *diagnostic.Bag
+	sess  *session.Session
 	fn    *bir.Fn
 	scope *Scope
 }
 
-func new(diags *diagnostic.Bag, scope *Scope) binder {
-	return binder{diags: diags, scope: scope}
+func new(sess *session.Session, scope *Scope) binder {
+	return binder{sess: sess, scope: scope}
 }
 
 func (b *binder) bindParams(aParams []*ast.VarDecl) []*bir.VarDecl {
@@ -350,7 +351,7 @@ func isErr(expr bir.Expr) bool {
 
 func (b *binder) error(span span.Span, format string, a ...any) {
 	msg := fmt.Sprintf(format, a...)
-	diagnostic.NewBuilder(msg, span).WithLabel("here").Emit(b.diags)
+	diagnostic.NewBuilder(msg, span).WithLabel("here").Emit(b.sess.Diags)
 }
 
 func lookupTy(out *ast.Ident) bir.Ty {

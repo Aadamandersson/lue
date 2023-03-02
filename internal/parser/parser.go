@@ -6,26 +6,27 @@ import (
 	"github.com/aadamandersson/lue/internal/diagnostic"
 	"github.com/aadamandersson/lue/internal/ir/ast"
 	"github.com/aadamandersson/lue/internal/lexer"
+	"github.com/aadamandersson/lue/internal/session"
 	"github.com/aadamandersson/lue/internal/span"
 	"github.com/aadamandersson/lue/internal/token"
 )
 
-func Parse(src []byte, diags *diagnostic.Bag) []ast.Item {
-	tokens := lexer.Lex(src)
-	p := new(diags, tokens)
+func Parse(sess *session.Session) []ast.Item {
+	tokens := lexer.Lex(sess)
+	p := new(sess, tokens)
 	return p.parse()
 }
 
 type parser struct {
-	diags   *diagnostic.Bag
+	sess    *session.Session
 	tokens  []token.Token
 	tok     token.Token
 	prevTok token.Token
 	pos     int
 }
 
-func new(diags *diagnostic.Bag, tokens []token.Token) parser {
-	p := parser{diags: diags, tokens: tokens}
+func new(sess *session.Session, tokens []token.Token) parser {
+	p := parser{sess: sess, tokens: tokens}
 	p.next()
 	return p
 }
@@ -170,9 +171,14 @@ func (p *parser) parseLetExpr(let_sp span.Span) ast.Expr {
 }
 
 func (p *parser) parseReturnExpr(retSp span.Span) ast.Expr {
-	if expr := p.parseExpr(); expr != nil {
-		return &ast.ReturnExpr{X: expr, Sp: retSp.To(expr.Span())}
+	retLine := p.sess.File.Line(retSp.Start)
+	currLine := p.sess.File.Line(p.tok.Sp.Start)
+	if retLine == currLine {
+		if expr := p.parseExpr(); expr != nil {
+			return &ast.ReturnExpr{X: expr, Sp: retSp.To(expr.Span())}
+		}
 	}
+
 	return &ast.ReturnExpr{Sp: retSp}
 }
 
@@ -336,5 +342,5 @@ func (p *parser) next() {
 
 func (p *parser) error(format string, a ...any) {
 	msg := fmt.Sprintf(format, a...)
-	diagnostic.NewBuilder(msg, p.tok.Sp).WithLabel("here").Emit(p.diags)
+	diagnostic.NewBuilder(msg, p.tok.Sp).WithLabel("here").Emit(p.sess.Diags)
 }

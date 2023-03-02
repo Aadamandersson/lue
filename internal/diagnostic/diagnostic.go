@@ -9,7 +9,6 @@ import (
 
 type (
 	Bag struct {
-		file  *span.SourceFile
 		diags []*Diagnostic
 	}
 
@@ -31,8 +30,8 @@ type (
 	}
 )
 
-func NewBag(file *span.SourceFile) *Bag {
-	return &Bag{file: file, diags: make([]*Diagnostic, 0)}
+func NewBag() *Bag {
+	return &Bag{diags: make([]*Diagnostic, 0)}
 }
 
 func (b *Bag) Empty() bool {
@@ -47,7 +46,7 @@ func (b *Bag) ForEach(f func(*Diagnostic) bool) {
 	}
 }
 
-func (b *Bag) Dump() {
+func (b *Bag) Dump(file *span.SourceFile) {
 	var builder strings.Builder
 	indent := func() { builder.WriteString(strings.Repeat(" ", 4)) }
 	for _, d := range b.diags {
@@ -55,15 +54,15 @@ func (b *Bag) Dump() {
 		errStr := fmt.Sprintf("error: %s\n", d.Msg)
 		builder.WriteString(errStr)
 
-		line := b.file.Line(d.Span.Start)
-		lineStart := b.file.LinePos(line)
-		lineEnd := b.file.LinePos(line + 1)
+		line := file.Line(d.Span.Start)
+		lineStart := file.LinePos(line)
+		lineEnd := file.LinePos(line + 1)
 		col := d.Span.Start - lineStart + 1
-		fLoc := fmt.Sprintf("[%s:%d:%d]\n", b.file.Name, col, line+1)
+		fLoc := fmt.Sprintf("[%s:%d:%d]\n", file.Name, col, line+1)
 		builder.WriteString(fLoc)
 
 		indent()
-		errLine := b.file.LineSlice(lineStart, lineEnd)
+		errLine := file.LineSlice(lineStart, lineEnd)
 		builder.WriteString(string(errLine))
 		if len(d.Labels) != 0 {
 			label := d.Labels[0] // FIXME: support multiple labels (secondary ones)

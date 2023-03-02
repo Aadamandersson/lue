@@ -3,6 +3,7 @@ package lexer
 import (
 	"testing"
 
+	"github.com/aadamandersson/lue/internal/session"
 	"github.com/aadamandersson/lue/internal/span"
 	"github.com/aadamandersson/lue/internal/token"
 )
@@ -52,7 +53,7 @@ var cases = []struct {
 
 func TestLex(t *testing.T) {
 	for _, c := range cases {
-		got := Lex([]byte(c.in))[0]
+		got := lex(c.in)[0]
 		if got != c.want {
 			t.Errorf("Lex(\"%s\") = %+v, want %+v\n", c.in, got, c.want)
 		}
@@ -73,4 +74,9 @@ func TestLexerLexesAllTokens(t *testing.T) {
 			t.Errorf("Token `%s` is not handled by the lexer.\n", k.String())
 		}
 	}
+}
+
+func lex(src string) []token.Token {
+	sess := session.New("test", []byte(src))
+	return Lex(sess)
 }

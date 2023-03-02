@@ -2,40 +2,38 @@ package machine
 
 import (
 	"github.com/aadamandersson/lue/internal/binder"
-	"github.com/aadamandersson/lue/internal/diagnostic"
 	"github.com/aadamandersson/lue/internal/ir"
 	"github.com/aadamandersson/lue/internal/ir/bir"
 	"github.com/aadamandersson/lue/internal/parser"
-	"github.com/aadamandersson/lue/internal/span"
+	"github.com/aadamandersson/lue/internal/session"
 )
 
 func Interpret(filename string, src []byte, kernel Kernel) bool {
-	file := span.NewSourceFile(filename, src)
-	diags := diagnostic.NewBag(file)
-	aItems := parser.Parse(src, diags)
-	fns := binder.Bind(aItems, diags)
-	m := new(fns, diags, kernel)
+	sess := session.New(filename, src)
+	aItems := parser.Parse(sess)
+	fns := binder.Bind(aItems, sess)
+	m := new(fns, sess, kernel)
 	ok := m.interpret()
 
-	if !diags.Empty() {
-		diags.Dump()
+	if !sess.Diags.Empty() {
+		sess.DumpDiags()
 	}
 
 	return ok
 }
 
 type machine struct {
-	diags  *diagnostic.Bag
+	sess   *session.Session
 	fns    map[string]*bir.Fn
 	locals []map[string]Value
 	kernel Kernel
 }
 
-func new(fns map[string]*bir.Fn, diags *diagnostic.Bag, kernel Kernel) *machine {
+func new(fns map[string]*bir.Fn, sess *session.Session, kernel Kernel) *machine {
 	locals := make([]map[string]Value, 1)
 	locals = append(locals, make(map[string]Value))
 	return &machine{
-		diags:  diags,
+		sess:   sess,
 		fns:    fns,
 		locals: locals,
 		kernel: kernel,
