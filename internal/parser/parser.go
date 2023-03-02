@@ -127,6 +127,11 @@ func (p *parser) parseExpr() ast.Expr {
 	if sp, ok := p.eat(token.Let); ok {
 		return p.parseLetExpr(sp)
 	}
+
+	if sp, ok := p.eat(token.Return); ok {
+		return p.parseReturnExpr(sp)
+	}
+
 	return p.parsePrecExpr(0)
 }
 
@@ -162,6 +167,13 @@ func (p *parser) parseLetExpr(let_sp span.Span) ast.Expr {
 
 	sp := let_sp.To(init.Span())
 	return &ast.LetExpr{Decl: &ast.VarDecl{Ident: ident, Ty: ty}, Init: init, Sp: sp}
+}
+
+func (p *parser) parseReturnExpr(retSp span.Span) ast.Expr {
+	if expr := p.parseExpr(); expr != nil {
+		return &ast.ReturnExpr{X: expr, Sp: retSp.To(expr.Span())}
+	}
+	return &ast.ReturnExpr{Sp: retSp}
 }
 
 func (p *parser) parsePrecExpr(min_prec int) ast.Expr {

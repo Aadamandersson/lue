@@ -92,6 +92,12 @@ type (
 		Args []Expr
 	}
 
+	// A return expression.
+	// `return [expr]`
+	ReturnExpr struct {
+		X Expr // Optional, may be nil.
+	}
+
 	// An intrinsic.
 	// E.g., `println`
 	Intrinsic ir.Intrinsic
@@ -112,6 +118,7 @@ func (*AssignExpr) exprNode()     {}
 func (*IfExpr) exprNode()         {}
 func (*BlockExpr) exprNode()      {}
 func (*CallExpr) exprNode()       {}
+func (*ReturnExpr) exprNode()     {}
 func (Intrinsic) exprNode()       {}
 func (*ErrExpr) exprNode()        {}
 
@@ -131,6 +138,12 @@ func (e *BlockExpr) Type() Ty {
 	return e.Exprs[len(e.Exprs)-1].Type()
 }
 func (e *CallExpr) Type() Ty { return e.Fn.Type() }
+func (e *ReturnExpr) Type() Ty {
+	if e.X == nil {
+		return TUnit
+	}
+	return e.X.Type()
+}
 func (e Intrinsic) Type() Ty { return TUnit }
 func (e *ErrExpr) Type() Ty  { return TErr }
 

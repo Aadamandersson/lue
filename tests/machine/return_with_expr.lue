@@ -1,0 +1,17 @@
+// Output:
+// foo
+// bar
+
+fn foo(): string {
+    return "foo"
+}
+
+fn bar(): string {
+    return "bar"
+    println("unreachable")
+}
+
+fn main() {
+    println(foo())
+    println(bar())
+}

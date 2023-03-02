@@ -81,6 +81,8 @@ func (m *machine) evalExpr(expr bir.Expr) (Value, bool) {
 		return m.evalBlockExpr(expr)
 	case *bir.CallExpr:
 		return m.evalCallExpr(expr)
+	case *bir.ReturnExpr:
+		return m.evalReturnExpr(expr)
 	case bir.Intrinsic:
 		return Intrinsic(expr), true
 	case *bir.ErrExpr:
@@ -200,6 +202,9 @@ func (m *machine) evalBlockExpr(block *bir.BlockExpr) (Value, bool) {
 		if !ok {
 			return nil, ok
 		}
+		if retVal, ok := value.(*RetVal); ok {
+			return retVal.V, true
+		}
 		lastVal = value
 	}
 	m.locals = m.locals[:len(m.locals)-1]
@@ -248,4 +253,15 @@ func (m *machine) evalCallExpr(expr *bir.CallExpr) (Value, bool) {
 	}
 
 	panic("unreachable")
+}
+
+func (m *machine) evalReturnExpr(expr *bir.ReturnExpr) (Value, bool) {
+	if expr.X != nil {
+		v, ok := m.evalExpr(expr.X)
+		if !ok {
+			return nil, ok
+		}
+		return &RetVal{V: v}, true
+	}
+	return &RetVal{V: Unit{}}, true
 }

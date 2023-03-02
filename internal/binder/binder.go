@@ -49,6 +49,7 @@ func bindGlobalScope(aItems []ast.Item, diags *diagnostic.Bag) *Scope {
 
 func (b *binder) bindFnDecl(fn *bir.Fn, diags *diagnostic.Bag, scope *Scope) {
 	prev := b.scope
+	b.fn = fn
 	b.scope = WithOuter(b.scope)
 	fn.In = b.bindParams(fn.Decl.In)
 	var ty bir.Ty
@@ -93,6 +94,7 @@ func (b *binder) bindFnDecl(fn *bir.Fn, diags *diagnostic.Bag, scope *Scope) {
 
 type binder struct {
 	diags *diagnostic.Bag
+	fn    *bir.Fn
 	scope *Scope
 }
 
@@ -157,6 +159,8 @@ func (b *binder) bindExpr(expr ast.Expr) bir.Expr {
 		return b.bindBlockExpr(expr)
 	case *ast.CallExpr:
 		return b.bindCallExpr(expr)
+	case *ast.ReturnExpr:
+		return b.bindReturnExpr(expr)
 	case *ast.ErrExpr:
 		return &bir.ErrExpr{}
 	}
@@ -314,6 +318,25 @@ func (b *binder) bindCallExpr(expr *ast.CallExpr) bir.Expr {
 		}
 	}
 	return &bir.CallExpr{Fn: fn, Args: args}
+}
+
+func (b *binder) bindReturnExpr(expr *ast.ReturnExpr) bir.Expr {
+	var x bir.Expr
+	if expr.X != nil {
+		x = b.bindExpr(expr.X)
+	}
+
+	if b.fn.Out == bir.TUnit && x != nil {
+		b.error(
+			expr.X.Span(),
+			"expected this function to return `%s`, but got `%s`",
+			b.fn.Out,
+			x.Type(),
+		)
+		return &bir.ErrExpr{}
+	}
+
+	return &bir.ReturnExpr{X: x}
 }
 
 func isErr(expr bir.Expr) bool {

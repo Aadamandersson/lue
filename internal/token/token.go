@@ -36,6 +36,7 @@ const (
 	Fn                  // `fn`
 	If                  // `if`
 	Let                 // `let`
+	Return              // `return`
 	True                // `true`
 	end
 )
@@ -68,6 +69,7 @@ var tokens = [...]string{
 	Fn:      "fn",
 	If:      "if",
 	Let:     "let",
+	Return:  "return",
 	True:    "true",
 }
 
@@ -109,12 +111,13 @@ func (t Token) IsOneOf(ks ...Kind) bool {
 }
 
 var keywords = map[string]Kind{
-	"else":  Else,
-	"false": False,
-	"fn":    Fn,
-	"if":    If,
-	"let":   Let,
-	"true":  True,
+	"else":   Else,
+	"false":  False,
+	"fn":     Fn,
+	"if":     If,
+	"let":    Let,
+	"return": Return,
+	"true":   True,
 }
 
 // Lookup returns the associated token kind for ident.

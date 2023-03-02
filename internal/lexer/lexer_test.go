@@ -46,6 +46,7 @@ var cases = []struct {
 	{"fn", token.New(token.Fn, "fn", span.New(0, 2))},
 	{"if", token.New(token.If, "if", span.New(0, 2))},
 	{"let", token.New(token.Let, "let", span.New(0, 3))},
+	{"return", token.New(token.Return, "return", span.New(0, 6))},
 	{"true", token.New(token.True, "true", span.New(0, 4))},
 }
 

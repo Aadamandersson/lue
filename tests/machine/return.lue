@@ -1,0 +1,12 @@
+// Output:
+// foo
+
+fn foo() {
+    println("foo")
+    //return
+    //println("bar") // FIXME: check if the expression following a `return` token is on the same line
+}
+
+fn main() {
+    foo()
+}

@@ -20,6 +20,9 @@ type (
 		Params []*bir.VarDecl
 		Body   bir.Expr
 	}
+	RetVal struct {
+		V Value
+	}
 	Intrinsic ir.Intrinsic
 	Unit      struct{}
 )
@@ -28,6 +31,7 @@ func (Integer) sealed()   {}
 func (Boolean) sealed()   {}
 func (String) sealed()    {}
 func (*Fn) sealed()       {}
+func (*RetVal) sealed()   {}
 func (Intrinsic) sealed() {}
 func (Unit) sealed()      {}
 
@@ -45,6 +49,10 @@ func (s String) String() string {
 
 func (f *Fn) String() string {
 	return "fn"
+}
+
+func (r *RetVal) String() string {
+	return r.V.String()
 }
 
 func (i Intrinsic) String() string {
