@@ -1,8 +1,10 @@
 package lexer
 
 import (
+	"fmt"
 	"strings"
 
+	"github.com/aadamandersson/lue/internal/diagnostic"
 	"github.com/aadamandersson/lue/internal/session"
 	"github.com/aadamandersson/lue/internal/span"
 	"github.com/aadamandersson/lue/internal/token"
@@ -14,18 +16,19 @@ func Lex(sess *session.Session) []token.Token {
 }
 
 type lexer struct {
-	src []byte
-	pos int // Current position in src.
+	sess *session.Session
+	pos  int // Current position in src.
 }
 
 func new(sess *session.Session) *lexer {
-	return &lexer{src: sess.File.Src}
+	return &lexer{sess: sess}
 }
 
 func (l *lexer) Lex() []token.Token {
 	var tokens []token.Token
 	for {
 		b := l.peek()
+
 		if b == 0 {
 			break
 		}
@@ -123,7 +126,9 @@ loop:
 		b := l.peek()
 		switch b {
 		case 0, '\r', '\n':
-			panic("TODO: report error - unterminated string")
+			sp := span.NewEmpty(l.pos)
+			diagnostic.NewBuilder("unterminated string", sp).WithLabel("expected `\"` here").Emit(l.sess.Diags)
+			break loop
 		case '\\':
 			l.next()
 			escByte := l.peek()
@@ -132,16 +137,19 @@ loop:
 				builder.WriteByte(escByte)
 				l.next()
 			default:
-				panic("TODO: report error - unknown character escape")
+				sp := span.NewEmpty(l.pos)
+				msg := fmt.Sprintf("unknown character escape `%s`", string(escByte))
+				diagnostic.NewBuilder(msg, sp).WithLabel("unknown character escape here").Emit(l.sess.Diags)
 			}
 		case '"':
+			l.next()
 			break loop
 		default:
 			l.next()
 			builder.WriteByte(b)
 		}
 	}
-	l.next()
+
 	return token.String, builder.String()
 }
 
@@ -173,15 +181,15 @@ func (l *lexer) collectString(first byte, matches func(byte) bool) string {
 //
 // If the lexer is at EOF, 0 is returned.
 func (l *lexer) peek() byte {
-	if l.pos < len(l.src) {
-		return l.src[l.pos]
+	if l.pos < len(l.sess.File.Src) {
+		return l.sess.File.Src[l.pos]
 	}
 	return 0
 }
 
 // next advances the lexer to the next byte in src.
 func (l *lexer) next() {
-	if l.pos < len(l.src) {
+	if l.pos < len(l.sess.File.Src) {
 		l.pos += 1
 	}
 }
@@ -195,7 +203,7 @@ func (l *lexer) eatWhile(matches func(byte) bool) {
 
 // isEof returns true if the lexer is at EOF, otherwise false.
 func (l *lexer) isEof() bool {
-	return l.pos == len(l.src)
+	return l.pos == len(l.sess.File.Src)
 }
 
 // isDigit returns true if byte b is a digit, otherwise false.
