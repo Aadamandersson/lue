@@ -92,6 +92,12 @@ type (
 		Args []Expr
 	}
 
+	// An array expression.
+	// `[1, 2, 3]`
+	ArrayExpr struct {
+		Exprs []Expr
+	}
+
 	// A return expression.
 	// `return [expr]`
 	ReturnExpr struct {
@@ -118,6 +124,7 @@ func (*AssignExpr) exprNode()     {}
 func (*IfExpr) exprNode()         {}
 func (*BlockExpr) exprNode()      {}
 func (*CallExpr) exprNode()       {}
+func (*ArrayExpr) exprNode()      {}
 func (*ReturnExpr) exprNode()     {}
 func (Intrinsic) exprNode()       {}
 func (*ErrExpr) exprNode()        {}
@@ -137,7 +144,8 @@ func (e *BlockExpr) Type() Ty {
 	}
 	return e.Exprs[len(e.Exprs)-1].Type()
 }
-func (e *CallExpr) Type() Ty { return e.Fn.Type() }
+func (e *CallExpr) Type() Ty  { return e.Fn.Type() }
+func (e *ArrayExpr) Type() Ty { return TArray }
 func (e *ReturnExpr) Type() Ty {
 	if e.X == nil {
 		return TUnit
@@ -154,6 +162,7 @@ const (
 	TInt
 	TBool
 	TString
+	TArray
 	TUnit
 )
 
@@ -162,6 +171,7 @@ var tys = [...]string{
 	TInt:    "int",
 	TBool:   "bool",
 	TString: "string",
+	TArray:  "[]", // TODO: we want to show the type of the elements as well
 	TUnit:   "()",
 }
 

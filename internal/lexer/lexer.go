@@ -93,10 +93,14 @@ func (l *lexer) lexToken(first byte) (token.Kind, string) {
 		return token.Comma, ""
 	case '(':
 		return token.LParen, ""
+	case '[':
+		return token.LBrack, ""
 	case '{':
 		return token.LBrace, ""
 	case ')':
 		return token.RParen, ""
+	case ']':
+		return token.RBrack, ""
 	case '}':
 		return token.RBrace, ""
 	case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':

@@ -2,6 +2,7 @@ package machine
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/aadamandersson/lue/internal/ir"
 	"github.com/aadamandersson/lue/internal/ir/bir"
@@ -16,7 +17,10 @@ type (
 	Integer int
 	Boolean bool
 	String  string
-	Fn      struct {
+	Array   struct {
+		Elems []Value
+	}
+	Fn struct {
 		Params []*bir.VarDecl
 		Body   bir.Expr
 	}
@@ -30,6 +34,7 @@ type (
 func (Integer) sealed()   {}
 func (Boolean) sealed()   {}
 func (String) sealed()    {}
+func (*Array) sealed()    {}
 func (*Fn) sealed()       {}
 func (*RetVal) sealed()   {}
 func (Intrinsic) sealed() {}
@@ -45,6 +50,21 @@ func (b Boolean) String() string {
 
 func (s String) String() string {
 	return string(s)
+}
+
+func (a *Array) String() string {
+	var builder strings.Builder
+
+	builder.WriteByte('[')
+	for i := 0; i < len(a.Elems); i++ {
+		if i > 0 {
+			builder.WriteString(", ")
+		}
+		builder.WriteString(a.Elems[i].String())
+	}
+	builder.WriteByte(']')
+
+	return builder.String()
 }
 
 func (f *Fn) String() string {

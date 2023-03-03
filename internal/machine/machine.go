@@ -67,6 +67,8 @@ func (m *machine) evalExpr(expr bir.Expr) (Value, bool) {
 		return Boolean(expr.V), true
 	case *bir.StringLiteral:
 		return String(expr.V), true
+	case *bir.ArrayExpr:
+		return m.evalArrayExpr(expr)
 	case *bir.BinaryExpr:
 		return m.evalBinaryExpr(expr)
 	case *bir.LetExpr:
@@ -88,6 +90,20 @@ func (m *machine) evalExpr(expr bir.Expr) (Value, bool) {
 	}
 
 	panic("unreachable")
+}
+
+func (m *machine) evalArrayExpr(expr *bir.ArrayExpr) (Value, bool) {
+	var elems []Value
+
+	for _, expr := range expr.Exprs {
+		v, ok := m.evalExpr(expr)
+		if !ok {
+			return nil, false
+		}
+		elems = append(elems, v)
+	}
+
+	return &Array{Elems: elems}, true
 }
 
 func (m *machine) evalBinaryExpr(expr *bir.BinaryExpr) (Value, bool) {

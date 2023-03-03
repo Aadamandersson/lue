@@ -28,8 +28,10 @@ const (
 	Colon               // `:`
 	Comma               // `,`
 	LParen              // `(`
+	LBrack              // `[`
 	LBrace              // `{`
 	RParen              // `)`
+	RBrack              // `]`
 	RBrace              // `}`
 	Else                // `else`
 	False               // `false`
@@ -61,8 +63,10 @@ var tokens = [...]string{
 	Colon:   ":",
 	Comma:   ",",
 	LParen:  "(",
+	LBrack:  "[",
 	LBrace:  "{",
 	RParen:  ")",
+	RBrack:  "]",
 	RBrace:  "}",
 	Else:    "else",
 	False:   "false",

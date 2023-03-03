@@ -260,7 +260,32 @@ func (p *parser) parseBotExpr() ast.Expr {
 		return &ast.BooleanLiteral{V: true, Sp: sp}
 	}
 
+	if sp, ok := p.eat(token.LBrack); ok {
+		return p.parseArrayExpr(sp)
+	}
+
 	return p.parseIdent()
+}
+
+// parseArrayExpr parses `[expr, expr...]`
+// `[` token already eaten.
+func (p *parser) parseArrayExpr(openSp span.Span) ast.Expr {
+	var exprs []ast.Expr
+	for !p.tok.IsOneOf(token.RBrack, token.Eof) {
+		exprs = append(exprs, p.parseExpr())
+		if _, ok := p.eat(token.Comma); !ok {
+			break
+		}
+	}
+
+	closeSp, ok := p.eat(token.RBrack)
+	if !ok {
+		p.error("expected closing delimiter `%s`", token.RBrack)
+		return &ast.ErrExpr{}
+	}
+
+	sp := openSp.To(closeSp)
+	return &ast.ArrayExpr{Exprs: exprs, Sp: sp}
 }
 
 // parseIfExpr parses `if cond { exprs } [else [if cond] { exprs ]`

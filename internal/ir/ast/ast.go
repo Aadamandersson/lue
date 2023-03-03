@@ -121,6 +121,13 @@ type (
 		Sp   span.Span
 	}
 
+	// An array expression.
+	// `[1, 2, 3]`
+	ArrayExpr struct {
+		Exprs []Expr
+		Sp    span.Span
+	}
+
 	// A return expression.
 	// `return [expr]`
 	ReturnExpr struct {
@@ -145,6 +152,7 @@ func (*AssignExpr) exprNode()     {}
 func (*IfExpr) exprNode()         {}
 func (*BlockExpr) exprNode()      {}
 func (*CallExpr) exprNode()       {}
+func (*ArrayExpr) exprNode()      {}
 func (*ReturnExpr) exprNode()     {}
 func (*ErrExpr) exprNode()        {}
 
@@ -158,6 +166,7 @@ func (e *AssignExpr) Span() span.Span     { return e.Sp }
 func (e *IfExpr) Span() span.Span         { return e.Sp }
 func (e *BlockExpr) Span() span.Span      { return e.Sp }
 func (e *CallExpr) Span() span.Span       { return e.Sp }
+func (e *ArrayExpr) Span() span.Span      { return e.Sp }
 func (e *ReturnExpr) Span() span.Span     { return e.Sp }
 func (e *ErrExpr) Span() span.Span        { return e.Sp }
 
