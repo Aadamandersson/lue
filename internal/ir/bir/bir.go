@@ -98,6 +98,13 @@ type (
 		Exprs []Expr
 	}
 
+	// An array indexing expression.
+	// `arr[i]`
+	IndexExpr struct {
+		Arr Expr
+		I   Expr
+	}
+
 	// A return expression.
 	// `return [expr]`
 	ReturnExpr struct {
@@ -125,6 +132,7 @@ func (*IfExpr) exprNode()         {}
 func (*BlockExpr) exprNode()      {}
 func (*CallExpr) exprNode()       {}
 func (*ArrayExpr) exprNode()      {}
+func (*IndexExpr) exprNode()      {}
 func (*ReturnExpr) exprNode()     {}
 func (Intrinsic) exprNode()       {}
 func (*ErrExpr) exprNode()        {}
@@ -146,6 +154,7 @@ func (e *BlockExpr) Type() Ty {
 }
 func (e *CallExpr) Type() Ty  { return e.Fn.Type() }
 func (e *ArrayExpr) Type() Ty { return TArray }
+func (e *IndexExpr) Type() Ty { return e.Arr.Type() } // FIXME: this should be the element type
 func (e *ReturnExpr) Type() Ty {
 	if e.X == nil {
 		return TUnit
@@ -154,6 +163,13 @@ func (e *ReturnExpr) Type() Ty {
 }
 func (e Intrinsic) Type() Ty { return TUnit }
 func (e *ErrExpr) Type() Ty  { return TErr }
+
+func (ae *ArrayExpr) ElemTy() Ty {
+	if len(ae.Exprs) == 0 {
+		return TErr
+	}
+	return ae.Exprs[0].Type()
+}
 
 type Ty int
 

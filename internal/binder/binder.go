@@ -162,6 +162,8 @@ func (b *binder) bindExpr(expr ast.Expr) bir.Expr {
 		return b.bindCallExpr(expr)
 	case *ast.ArrayExpr:
 		return b.bindArrayExpr(expr)
+	case *ast.IndexExpr:
+		return b.bindIndexExpr(expr)
 	case *ast.ReturnExpr:
 		return b.bindReturnExpr(expr)
 	case *ast.ErrExpr:
@@ -343,6 +345,22 @@ func (b *binder) bindArrayExpr(expr *ast.ArrayExpr) bir.Expr {
 	}
 
 	return &bir.ArrayExpr{Exprs: exprs}
+}
+
+func (b *binder) bindIndexExpr(expr *ast.IndexExpr) bir.Expr {
+	arr := b.bindExpr(expr.Arr)
+	if arr.Type() != bir.TArray {
+		b.error(expr.Arr.Span(), "expected an array, but got `%s`", arr.Type())
+		return &bir.ErrExpr{}
+	}
+
+	i := b.bindExpr(expr.I)
+	if i.Type() != bir.TInt {
+		b.error(expr.I.Span(), "expected an integer, but got `%s`", i.Type())
+		return &bir.ErrExpr{}
+	}
+
+	return &bir.IndexExpr{Arr: arr, I: i}
 }
 
 func (b *binder) bindReturnExpr(expr *ast.ReturnExpr) bir.Expr {

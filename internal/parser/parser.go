@@ -183,7 +183,7 @@ func (p *parser) parseReturnExpr(retSp span.Span) ast.Expr {
 }
 
 func (p *parser) parsePrecExpr(min_prec int) ast.Expr {
-	expr := p.parseCallExpr()
+	expr := p.parseCallOrIndexExpr()
 
 	for {
 		op, ok := ast.BinOpFromToken(p.tok)
@@ -210,7 +210,7 @@ func (p *parser) parsePrecExpr(min_prec int) ast.Expr {
 	return expr
 }
 
-func (p *parser) parseCallExpr() ast.Expr {
+func (p *parser) parseCallOrIndexExpr() ast.Expr {
 	expr := p.parseBotExpr()
 
 	if _, ok := p.eat(token.LParen); ok {
@@ -230,6 +230,18 @@ func (p *parser) parseCallExpr() ast.Expr {
 
 		sp := expr.Span().To(rpSp)
 		return &ast.CallExpr{Fn: expr, Args: args, Sp: sp}
+	}
+
+	if _, ok := p.eat(token.LBrack); ok {
+		i := p.parseExpr()
+
+		closeSp, ok := p.eat(token.RBrack)
+		if !ok {
+			p.error("expected closing delimiter `%s`", token.RBrack)
+			return &ast.ErrExpr{}
+		}
+		sp := expr.Span().To(closeSp)
+		return &ast.IndexExpr{Arr: expr, I: i, Sp: sp}
 	}
 
 	return expr

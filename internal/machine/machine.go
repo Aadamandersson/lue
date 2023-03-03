@@ -69,6 +69,8 @@ func (m *machine) evalExpr(expr bir.Expr) (Value, bool) {
 		return String(expr.V), true
 	case *bir.ArrayExpr:
 		return m.evalArrayExpr(expr)
+	case *bir.IndexExpr:
+		return m.evalIndexExpr(expr)
 	case *bir.BinaryExpr:
 		return m.evalBinaryExpr(expr)
 	case *bir.LetExpr:
@@ -104,6 +106,22 @@ func (m *machine) evalArrayExpr(expr *bir.ArrayExpr) (Value, bool) {
 	}
 
 	return &Array{Elems: elems}, true
+}
+
+func (m *machine) evalIndexExpr(expr *bir.IndexExpr) (Value, bool) {
+	arrExpr, ok := m.evalExpr(expr.Arr)
+	if !ok {
+		return nil, ok
+	}
+
+	idxExpr, ok := m.evalExpr(expr.I)
+	if !ok {
+		return nil, ok
+	}
+	// TODO: out of bounds handling
+	arr := arrExpr.(*Array)
+	i := idxExpr.(Integer)
+	return arr.Elems[i], true
 }
 
 func (m *machine) evalBinaryExpr(expr *bir.BinaryExpr) (Value, bool) {
