@@ -133,6 +133,10 @@ func (p *parser) parseExpr() ast.Expr {
 		return p.parseReturnExpr(sp)
 	}
 
+	if sp, ok := p.eat(token.Break); ok {
+		return p.parseBreakExpr(sp)
+	}
+
 	return p.parsePrecExpr(0)
 }
 
@@ -180,6 +184,20 @@ func (p *parser) parseReturnExpr(retSp span.Span) ast.Expr {
 	}
 
 	return &ast.ReturnExpr{Sp: retSp}
+}
+
+// parseBreakExpr parses `break [expr]`
+// `break` token already eaten.
+func (p *parser) parseBreakExpr(breakSp span.Span) ast.Expr {
+	retLine := p.sess.File.Line(breakSp.Start)
+	currLine := p.sess.File.Line(p.tok.Sp.Start)
+	if retLine == currLine {
+		if expr := p.parseExpr(); expr != nil {
+			return &ast.BreakExpr{X: expr, Sp: breakSp.To(expr.Span())}
+		}
+	}
+
+	return &ast.BreakExpr{Sp: breakSp}
 }
 
 func (p *parser) parsePrecExpr(min_prec int) ast.Expr {
@@ -250,6 +268,10 @@ func (p *parser) parseCallOrIndexExpr() ast.Expr {
 func (p *parser) parseBotExpr() ast.Expr {
 	if sp, ok := p.eat(token.If); ok {
 		return p.parseIfExpr(sp)
+	}
+
+	if sp, ok := p.eat(token.For); ok {
+		return p.parseForExpr(sp)
 	}
 
 	if sp, ok := p.eat(token.Ident); ok {
@@ -325,6 +347,14 @@ func (p *parser) parseElseExpr() ast.Expr {
 		return p.parseIfExpr(ifSp)
 	}
 	return p.parseBlockExpr()
+}
+
+// parseForExpr parses `for { exprs }`
+// `for` token already eaten.
+func (p *parser) parseForExpr(forSp span.Span) ast.Expr {
+	body := p.parseBlockExpr()
+	sp := forSp.To(body.Span())
+	return &ast.ForExpr{Body: body, Sp: sp}
 }
 
 // parseBlockExpr parses `{ exprs }`

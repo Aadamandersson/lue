@@ -105,6 +105,18 @@ type (
 		I   Expr
 	}
 
+	// A for loop.
+	// `for { exprs }`
+	ForExpr struct {
+		Body Expr
+	}
+
+	// A break expression.
+	// `break [expr]`
+	BreakExpr struct {
+		X Expr // Optional, may be nil.
+	}
+
 	// A return expression.
 	// `return [expr]`
 	ReturnExpr struct {
@@ -133,6 +145,8 @@ func (*BlockExpr) exprNode()      {}
 func (*CallExpr) exprNode()       {}
 func (*ArrayExpr) exprNode()      {}
 func (*IndexExpr) exprNode()      {}
+func (*ForExpr) exprNode()        {}
+func (*BreakExpr) exprNode()      {}
 func (*ReturnExpr) exprNode()     {}
 func (Intrinsic) exprNode()       {}
 func (*ErrExpr) exprNode()        {}
@@ -155,6 +169,13 @@ func (e *BlockExpr) Type() Ty {
 func (e *CallExpr) Type() Ty  { return e.Fn.Type() }
 func (e *ArrayExpr) Type() Ty { return TArray }
 func (e *IndexExpr) Type() Ty { return e.Arr.Type() } // FIXME: this should be the element type
+func (e *ForExpr) Type() Ty   { return e.Body.Type() }
+func (e *BreakExpr) Type() Ty {
+	if e.X == nil {
+		return TUnit
+	}
+	return e.X.Type()
+}
 func (e *ReturnExpr) Type() Ty {
 	if e.X == nil {
 		return TUnit

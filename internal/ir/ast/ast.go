@@ -136,6 +136,20 @@ type (
 		Sp  span.Span
 	}
 
+	// A for loop.
+	// `for { exprs }`
+	ForExpr struct {
+		Body Expr
+		Sp   span.Span
+	}
+
+	// A break expression.
+	// `break [expr]`
+	BreakExpr struct {
+		X  Expr // Optional, may be nil.
+		Sp span.Span
+	}
+
 	// A return expression.
 	// `return [expr]`
 	ReturnExpr struct {
@@ -162,6 +176,8 @@ func (*BlockExpr) exprNode()      {}
 func (*CallExpr) exprNode()       {}
 func (*ArrayExpr) exprNode()      {}
 func (*IndexExpr) exprNode()      {}
+func (*ForExpr) exprNode()        {}
+func (*BreakExpr) exprNode()      {}
 func (*ReturnExpr) exprNode()     {}
 func (*ErrExpr) exprNode()        {}
 
@@ -177,6 +193,8 @@ func (e *BlockExpr) Span() span.Span      { return e.Sp }
 func (e *CallExpr) Span() span.Span       { return e.Sp }
 func (e *ArrayExpr) Span() span.Span      { return e.Sp }
 func (e *IndexExpr) Span() span.Span      { return e.Sp }
+func (e *ForExpr) Span() span.Span        { return e.Sp }
+func (e *BreakExpr) Span() span.Span      { return e.Sp }
 func (e *ReturnExpr) Span() span.Span     { return e.Sp }
 func (e *ErrExpr) Span() span.Span        { return e.Sp }
 

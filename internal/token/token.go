@@ -33,9 +33,11 @@ const (
 	RParen              // `)`
 	RBrack              // `]`
 	RBrace              // `}`
+	Break               // `break`
 	Else                // `else`
 	False               // `false`
 	Fn                  // `fn`
+	For                 // `for`
 	If                  // `if`
 	Let                 // `let`
 	Return              // `return`
@@ -68,9 +70,11 @@ var tokens = [...]string{
 	RParen:  ")",
 	RBrack:  "]",
 	RBrace:  "}",
+	Break:   "break",
 	Else:    "else",
 	False:   "false",
 	Fn:      "fn",
+	For:     "for",
 	If:      "if",
 	Let:     "let",
 	Return:  "return",
@@ -115,9 +119,11 @@ func (t Token) IsOneOf(ks ...Kind) bool {
 }
 
 var keywords = map[string]Kind{
+	"break":  Break,
 	"else":   Else,
 	"false":  False,
 	"fn":     Fn,
+	"for":    For,
 	"if":     If,
 	"let":    Let,
 	"return": Return,

@@ -27,6 +27,9 @@ type (
 	RetVal struct {
 		V Value
 	}
+	BreakVal struct {
+		V Value
+	}
 	Intrinsic ir.Intrinsic
 	Unit      struct{}
 )
@@ -37,6 +40,7 @@ func (String) sealed()    {}
 func (*Array) sealed()    {}
 func (*Fn) sealed()       {}
 func (*RetVal) sealed()   {}
+func (*BreakVal) sealed() {}
 func (Intrinsic) sealed() {}
 func (Unit) sealed()      {}
 
@@ -72,6 +76,10 @@ func (f *Fn) String() string {
 }
 
 func (r *RetVal) String() string {
+	return r.V.String()
+}
+
+func (r *BreakVal) String() string {
 	return r.V.String()
 }
 

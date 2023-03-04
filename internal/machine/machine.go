@@ -12,7 +12,7 @@ func Interpret(filename string, src []byte, kernel Kernel) bool {
 	sess := session.New(filename, src)
 	aItems := parser.Parse(sess)
 	fns := binder.Bind(aItems, sess)
-	m := new(fns, sess, kernel)
+	m := newMachine(fns, sess, kernel)
 	ok := m.interpret()
 
 	if !sess.Diags.Empty() {
@@ -25,13 +25,13 @@ func Interpret(filename string, src []byte, kernel Kernel) bool {
 type machine struct {
 	sess   *session.Session
 	fns    map[string]*bir.Fn
-	locals []map[string]Value
+	locals []map[*ir.Ident]Value
 	kernel Kernel
 }
 
-func new(fns map[string]*bir.Fn, sess *session.Session, kernel Kernel) *machine {
-	locals := make([]map[string]Value, 1)
-	locals = append(locals, make(map[string]Value))
+func newMachine(fns map[string]*bir.Fn, sess *session.Session, kernel Kernel) *machine {
+	locals := make([]map[*ir.Ident]Value, 0)
+	locals = append(locals, make(map[*ir.Ident]Value))
 	return &machine{
 		sess:   sess,
 		fns:    fns,
@@ -56,21 +56,13 @@ func (m *machine) evalExpr(expr bir.Expr) (Value, bool) {
 		fn := m.fns[expr.Decl.Ident.Name]
 		return &Fn{Params: fn.In, Body: fn.Body}, true
 	case *bir.VarDecl:
-		for i := len(m.locals) - 1; i >= 0; i-- {
-			if local, ok := m.locals[i][expr.Ident.Name]; ok {
-				return local, true
-			}
-		}
+		return m.locals[len(m.locals)-1][expr.Ident], true
 	case *bir.IntegerLiteral:
 		return Integer(expr.V), true
 	case *bir.BooleanLiteral:
 		return Boolean(expr.V), true
 	case *bir.StringLiteral:
 		return String(expr.V), true
-	case *bir.ArrayExpr:
-		return m.evalArrayExpr(expr)
-	case *bir.IndexExpr:
-		return m.evalIndexExpr(expr)
 	case *bir.BinaryExpr:
 		return m.evalBinaryExpr(expr)
 	case *bir.LetExpr:
@@ -83,6 +75,14 @@ func (m *machine) evalExpr(expr bir.Expr) (Value, bool) {
 		return m.evalBlockExpr(expr)
 	case *bir.CallExpr:
 		return m.evalCallExpr(expr)
+	case *bir.ArrayExpr:
+		return m.evalArrayExpr(expr)
+	case *bir.IndexExpr:
+		return m.evalIndexExpr(expr)
+	case *bir.ForExpr:
+		return m.evalForExpr(expr)
+	case *bir.BreakExpr:
+		return m.evalBreakExpr(expr)
 	case *bir.ReturnExpr:
 		return m.evalReturnExpr(expr)
 	case bir.Intrinsic:
@@ -92,36 +92,6 @@ func (m *machine) evalExpr(expr bir.Expr) (Value, bool) {
 	}
 
 	panic("unreachable")
-}
-
-func (m *machine) evalArrayExpr(expr *bir.ArrayExpr) (Value, bool) {
-	var elems []Value
-
-	for _, expr := range expr.Exprs {
-		v, ok := m.evalExpr(expr)
-		if !ok {
-			return nil, false
-		}
-		elems = append(elems, v)
-	}
-
-	return &Array{Elems: elems}, true
-}
-
-func (m *machine) evalIndexExpr(expr *bir.IndexExpr) (Value, bool) {
-	arrExpr, ok := m.evalExpr(expr.Arr)
-	if !ok {
-		return nil, ok
-	}
-
-	idxExpr, ok := m.evalExpr(expr.I)
-	if !ok {
-		return nil, ok
-	}
-	// TODO: out of bounds handling
-	arr := arrExpr.(*Array)
-	i := idxExpr.(Integer)
-	return arr.Elems[i], true
 }
 
 func (m *machine) evalBinaryExpr(expr *bir.BinaryExpr) (Value, bool) {
@@ -185,7 +155,7 @@ func (m *machine) evalLetExpr(expr *bir.LetExpr) (Value, bool) {
 	if !ok {
 		return nil, ok
 	}
-	m.locals[len(m.locals)-1][expr.Decl.Ident.Name] = v
+	m.locals[len(m.locals)-1][expr.Decl.Ident] = v
 	return Unit{}, true
 }
 
@@ -197,7 +167,7 @@ func (m *machine) evalAssignExpr(expr *bir.AssignExpr) (Value, bool) {
 	// TODO: we ensure in the binder that this will always be an Ident for now,
 	// but eventually we want to support more types.
 	decl := expr.X.(*bir.VarDecl)
-	m.locals[len(m.locals)-1][decl.Ident.Name] = v
+	m.locals[len(m.locals)-1][decl.Ident] = v
 	return Unit{}, true
 }
 
@@ -228,18 +198,23 @@ func (m *machine) evalIfExpr(expr *bir.IfExpr) (Value, bool) {
 
 func (m *machine) evalBlockExpr(block *bir.BlockExpr) (Value, bool) {
 	var lastVal Value
-	m.locals = append(m.locals, make(map[string]Value))
+
 	for _, expr := range block.Exprs {
 		value, ok := m.evalExpr(expr)
 		if !ok {
 			return nil, ok
 		}
-		if retVal, ok := value.(*RetVal); ok {
-			return retVal.V, true
+
+		if rv, ok := value.(*RetVal); ok {
+			return rv.V, ok
 		}
+
+		if bv, ok := value.(*BreakVal); ok {
+			return bv, ok
+		}
+
 		lastVal = value
 	}
-	m.locals = m.locals[:len(m.locals)-1]
 	return lastVal, true
 }
 
@@ -265,14 +240,14 @@ func (m *machine) evalCallExpr(expr *bir.CallExpr) (Value, bool) {
 			return m.evalExpr(fn.Body)
 		}
 
-		frame := make(map[string]Value, len(expr.Args))
+		frame := make(map[*ir.Ident]Value, len(expr.Args))
 		for i, arg := range expr.Args {
 			argVal, ok := m.evalExpr(arg)
 			if !ok {
 				return nil, ok
 			}
 			param := fn.Params[i]
-			frame[param.Ident.Name] = argVal
+			frame[param.Ident] = argVal
 		}
 		m.locals = append(m.locals, frame)
 		v, ok := m.evalExpr(fn.Body)
@@ -285,6 +260,60 @@ func (m *machine) evalCallExpr(expr *bir.CallExpr) (Value, bool) {
 	}
 
 	panic("unreachable")
+}
+
+func (m *machine) evalArrayExpr(expr *bir.ArrayExpr) (Value, bool) {
+	var elems []Value
+
+	for _, expr := range expr.Exprs {
+		v, ok := m.evalExpr(expr)
+		if !ok {
+			return nil, false
+		}
+		elems = append(elems, v)
+	}
+
+	return &Array{Elems: elems}, true
+}
+
+func (m *machine) evalIndexExpr(expr *bir.IndexExpr) (Value, bool) {
+	arrExpr, ok := m.evalExpr(expr.Arr)
+	if !ok {
+		return nil, ok
+	}
+
+	idxExpr, ok := m.evalExpr(expr.I)
+	if !ok {
+		return nil, ok
+	}
+	// TODO: out of bounds handling
+	arr := arrExpr.(*Array)
+	i := idxExpr.(Integer)
+	return arr.Elems[i], true
+}
+
+func (m *machine) evalForExpr(expr *bir.ForExpr) (Value, bool) {
+	for {
+		v, ok := m.evalExpr(expr.Body)
+		if !ok {
+			return nil, ok
+		}
+
+		if bv, ok := v.(*BreakVal); ok {
+			return bv.V, true
+		}
+	}
+}
+
+func (m *machine) evalBreakExpr(expr *bir.BreakExpr) (Value, bool) {
+	if expr.X != nil {
+		v, ok := m.evalExpr(expr.X)
+		if !ok {
+			return nil, ok
+		}
+		return &BreakVal{V: v}, true
+	}
+	return &BreakVal{V: Unit{}}, true
 }
 
 func (m *machine) evalReturnExpr(expr *bir.ReturnExpr) (Value, bool) {

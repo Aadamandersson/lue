@@ -1,0 +1,13 @@
+// Output:
+// 10
+
+fn main() {
+    let counter = 0
+    let result = for {
+        if counter == 5 {
+            break counter * 2
+        }
+        counter = counter + 1
+    }
+    println(result)
+}

@@ -12,7 +12,6 @@ func main() {
 		fmt.Println("Usage: lue <path>")
 		os.Exit(1)
 	}
-
 	path := os.Args[1]
 	src, err := os.ReadFile(path)
 	if err != nil {

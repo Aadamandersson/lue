@@ -94,13 +94,17 @@ func (b *binder) bindFnDecl(fn *bir.Fn, sess *session.Session, scope *Scope) {
 }
 
 type binder struct {
-	sess  *session.Session
-	fn    *bir.Fn
-	scope *Scope
+	sess      *session.Session
+	loopLevel int
+	fn        *bir.Fn
+	scope     *Scope
 }
 
 func new(sess *session.Session, scope *Scope) binder {
-	return binder{sess: sess, scope: scope}
+	return binder{
+		sess:  sess,
+		scope: scope,
+	}
 }
 
 func (b *binder) bindParams(aParams []*ast.VarDecl) []*bir.VarDecl {
@@ -164,6 +168,10 @@ func (b *binder) bindExpr(expr ast.Expr) bir.Expr {
 		return b.bindArrayExpr(expr)
 	case *ast.IndexExpr:
 		return b.bindIndexExpr(expr)
+	case *ast.ForExpr:
+		return b.bindForExpr(expr)
+	case *ast.BreakExpr:
+		return b.bindBreakExpr(expr)
 	case *ast.ReturnExpr:
 		return b.bindReturnExpr(expr)
 	case *ast.ErrExpr:
@@ -361,6 +369,27 @@ func (b *binder) bindIndexExpr(expr *ast.IndexExpr) bir.Expr {
 	}
 
 	return &bir.IndexExpr{Arr: arr, I: i}
+}
+
+func (b *binder) bindForExpr(expr *ast.ForExpr) bir.Expr {
+	var body bir.Expr = &bir.ErrExpr{}
+	b.loopLevel += 1
+	body = b.bindExpr(expr.Body)
+	return &bir.ForExpr{Body: body}
+}
+
+func (b *binder) bindBreakExpr(expr *ast.BreakExpr) bir.Expr {
+	if b.loopLevel == 0 {
+		b.error(expr.Sp, "cannot `break` outside a `for` loop")
+		return &bir.ErrExpr{}
+	}
+
+	var x bir.Expr
+	if expr.X != nil {
+		x = b.bindExpr(expr.X)
+	}
+	b.loopLevel -= 1
+	return &bir.BreakExpr{X: x}
 }
 
 func (b *binder) bindReturnExpr(expr *ast.ReturnExpr) bir.Expr {
