@@ -22,20 +22,60 @@ func Interpret(filename string, src []byte, kernel Kernel) bool {
 	return ok
 }
 
+type stack struct {
+	frames []*frame
+}
+
+func newStack() *stack {
+	return &stack{frames: make([]*frame, 0)}
+}
+
+func (s *stack) push(f *frame) {
+	s.frames = append(s.frames, f)
+}
+
+func (s *stack) pop() *frame {
+	n := len(s.frames)
+	if n == 0 {
+		return nil
+	}
+	frame := s.frames[n-1]
+	s.frames = s.frames[:n-1]
+	return frame
+}
+
+func (s *stack) peek() *frame {
+	n := len(s.frames)
+	if n == 0 {
+		return nil
+	}
+	return s.frames[n-1]
+}
+
+type frame struct {
+	locals map[*bir.VarDecl]Value
+}
+
+func newFrame(locals map[*bir.VarDecl]Value) *frame {
+	return &frame{locals: locals}
+}
+
+func (f *frame) local(decl *bir.VarDecl) Value {
+	return f.locals[decl]
+}
+
 type machine struct {
 	sess   *session.Session
 	fns    map[string]*bir.Fn
-	locals []map[*ir.Ident]Value
+	stack  *stack
 	kernel Kernel
 }
 
 func newMachine(fns map[string]*bir.Fn, sess *session.Session, kernel Kernel) *machine {
-	locals := make([]map[*ir.Ident]Value, 0)
-	locals = append(locals, make(map[*ir.Ident]Value))
 	return &machine{
 		sess:   sess,
 		fns:    fns,
-		locals: locals,
+		stack:  newStack(),
 		kernel: kernel,
 	}
 }
@@ -46,6 +86,7 @@ func (m *machine) interpret() bool {
 		m.kernel.Println("no `main` function found")
 		return false
 	}
+	m.stack.push(newFrame(map[*bir.VarDecl]Value{}))
 	_, ok = m.evalExpr(main.Body)
 	return ok
 }
@@ -56,7 +97,7 @@ func (m *machine) evalExpr(expr bir.Expr) (Value, bool) {
 		fn := m.fns[expr.Decl.Ident.Name]
 		return &Fn{Params: fn.In, Body: fn.Body}, true
 	case *bir.VarDecl:
-		return m.locals[len(m.locals)-1][expr.Ident], true
+		return m.stack.peek().local(expr), true
 	case *bir.IntegerLiteral:
 		return Integer(expr.V), true
 	case *bir.BooleanLiteral:
@@ -155,7 +196,7 @@ func (m *machine) evalLetExpr(expr *bir.LetExpr) (Value, bool) {
 	if !ok {
 		return nil, ok
 	}
-	m.locals[len(m.locals)-1][expr.Decl.Ident] = v
+	m.stack.peek().locals[expr.Decl] = v
 	return Unit{}, true
 }
 
@@ -167,7 +208,7 @@ func (m *machine) evalAssignExpr(expr *bir.AssignExpr) (Value, bool) {
 	// TODO: we ensure in the binder that this will always be an Ident for now,
 	// but eventually we want to support more types.
 	decl := expr.X.(*bir.VarDecl)
-	m.locals[len(m.locals)-1][decl.Ident] = v
+	m.stack.peek().locals[decl] = v
 	return Unit{}, true
 }
 
@@ -240,18 +281,18 @@ func (m *machine) evalCallExpr(expr *bir.CallExpr) (Value, bool) {
 			return m.evalExpr(fn.Body)
 		}
 
-		frame := make(map[*ir.Ident]Value, len(expr.Args))
+		locals := make(map[*bir.VarDecl]Value, len(expr.Args))
 		for i, arg := range expr.Args {
 			argVal, ok := m.evalExpr(arg)
 			if !ok {
 				return nil, ok
 			}
 			param := fn.Params[i]
-			frame[param.Ident] = argVal
+			locals[param] = argVal
 		}
-		m.locals = append(m.locals, frame)
+		m.stack.push(newFrame(locals))
 		v, ok := m.evalExpr(fn.Body)
-		m.locals = m.locals[:len(m.locals)-1]
+		m.stack.pop()
 		if !ok {
 			return nil, ok
 		}

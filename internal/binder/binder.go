@@ -252,7 +252,7 @@ func (b *binder) bindAssignExpr(expr *ast.AssignExpr) bir.Expr {
 			}
 		}
 
-		return &bir.AssignExpr{X: &bir.VarDecl{Ident: x.Ident, Ty: y.Type()}, Y: y}
+		return &bir.AssignExpr{X: x, Y: y}
 	default:
 		b.error(expr.X.Span(), "can only assign to identifiers for now")
 		return &bir.ErrExpr{}
