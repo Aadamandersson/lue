@@ -65,16 +65,14 @@ func (p *parser) parseFnDecl(fnSpan span.Span) ast.Item {
 		return nil
 	}
 
-	var ty *ast.Ident
-	_, hasColon := p.eat(token.Colon)
-	if hasColon {
-		ty = p.parseIdent()
-		if ty == nil {
-			p.error("expected type after `:`")
-		}
+	var ty *ast.Ty
+	if sp, ok := p.eat(token.Colon); ok {
+		ty = p.parseTy()
+	} else {
+		ty = &ast.Ty{Kind: ast.TyUnit, Sp: sp}
 	}
 
-	if ty == nil && hasColon {
+	if ty == nil {
 		return &ast.ErrItem{}
 	}
 
@@ -102,9 +100,8 @@ func (p *parser) parseParams() []*ast.VarDecl {
 			p.error("expected `:`")
 		}
 
-		ty := p.parseIdent()
+		ty := p.parseTy()
 		if ty == nil {
-			p.error("expected parameter type")
 			continue
 		}
 
@@ -148,13 +145,11 @@ func (p *parser) parseLetExpr(let_sp span.Span) ast.Expr {
 		p.error("expected identifier in let binding, but got `%s`", p.tok.Kind)
 	}
 
-	var ty *ast.Ident
-	_, hasColon := p.eat(token.Colon)
-	if hasColon {
-		ty = p.parseIdent()
-		if ty == nil {
-			p.error("expected type after `:`")
-		}
+	var ty *ast.Ty
+	if colonSp, ok := p.eat(token.Colon); ok {
+		ty = p.parseTy()
+	} else {
+		ty = &ast.Ty{Kind: ast.TyInfer, Sp: colonSp}
 	}
 
 	if _, ok := p.eat(token.Eq); !ok {
@@ -166,7 +161,7 @@ func (p *parser) parseLetExpr(let_sp span.Span) ast.Expr {
 		p.error("expected expression, but got `%s`", p.tok.Kind)
 	}
 
-	if ident == nil || init == nil || (hasColon && ty == nil) {
+	if ident == nil || init == nil || ty == nil {
 		return &ast.ErrExpr{}
 	}
 
@@ -378,6 +373,31 @@ func (p *parser) parseBlockExpr() ast.Expr {
 
 	sp := openSp.To(closeSp)
 	return &ast.BlockExpr{Exprs: exprs, Sp: sp}
+}
+
+// `:` token already eaten.
+func (p *parser) parseTy() *ast.Ty {
+	if openSp, ok := p.eat(token.LBrack); ok {
+		ident := p.parseIdent()
+		if ident == nil {
+			p.error("expected a type after `[`")
+			return nil
+		}
+		closeSp, ok := p.eat(token.RBrack)
+		if !ok {
+			p.error("expected closing delimiter `%s`", token.LBrack)
+			return nil
+		}
+		sp := openSp.To(closeSp)
+		return &ast.Ty{Kind: ast.TyArray, Ident: ident, Sp: sp}
+	}
+
+	ident := p.parseIdent()
+	if ident == nil {
+		p.error("expected type after `:`")
+		return nil
+	}
+	return &ast.Ty{Kind: ast.TyIdent, Ident: ident, Sp: ident.Sp}
 }
 
 func (p *parser) parseIdent() *ast.Ident {

@@ -27,7 +27,7 @@ type (
 	FnDecl struct {
 		Ident *Ident
 		In    []*VarDecl
-		Out   *Ident
+		Out   *Ty
 		Body  Expr
 		Sp    span.Span
 	}
@@ -38,7 +38,37 @@ type (
 
 type VarDecl struct {
 	Ident *Ident
-	Ty    *Ident // May be nil if used in a let binding
+	Ty    *Ty
+}
+
+type TyKind int
+
+const (
+	TyInfer TyKind = iota
+	TyArray
+	TyIdent
+	TyUnit
+)
+
+type Ty struct {
+	Kind  TyKind
+	Ident *Ident // Nil if kind is `TyInfer` or `TyUnit`
+	Sp    span.Span
+}
+
+func (t *Ty) String() string {
+	switch t.Kind {
+	case TyInfer:
+		return "?"
+	case TyArray:
+		return "[" + t.Ident.Name + "]"
+	case TyIdent:
+		return t.Ident.Name
+	case TyUnit:
+		return "()"
+	default:
+		panic("unreachable")
+	}
 }
 
 // Ensure that we can only assign item nodes to an Item.

@@ -55,17 +55,17 @@ func (b *binder) bindFnDecl(fn *bir.Fn, sess *session.Session, scope *Scope) {
 	fn.In = b.bindParams(fn.Decl.In)
 	var ty bir.Ty
 	if fn.Decl.Out == nil {
-		ty = bir.TUnit
+		ty = bir.TyUnit
 	} else {
 		ty = lookupTy(fn.Decl.Out)
-		if ty == bir.TErr {
-			b.error(fn.Decl.Out.Sp, "cannot find type `%s` in this scope", fn.Decl.Out.Name)
+		if ty == bir.TyErr {
+			b.error(fn.Decl.Out.Sp, "cannot find type `%s` in this scope", fn.Decl.Out)
 		}
 	}
 
 	body := b.bindExpr(fn.Decl.Body)
 	if blk, ok := body.(*bir.BlockExpr); ok {
-		if ty != bir.TUnit && len(blk.Exprs) == 0 {
+		if ty != bir.TyUnit && len(blk.Exprs) == 0 {
 			b.error(
 				fn.Decl.Out.Sp,
 				"expected this function to return `%s`, but the body is empty",
@@ -127,8 +127,8 @@ func (b *binder) bindParams(aParams []*ast.VarDecl) []*bir.VarDecl {
 
 func (b *binder) bindParam(aParam *ast.VarDecl) *bir.VarDecl {
 	ty := lookupTy(aParam.Ty)
-	if ty == bir.TErr {
-		b.error(aParam.Ty.Sp, "cannot find type `%s` in this scope", aParam.Ty.Name)
+	if ty == bir.TyErr {
+		b.error(aParam.Ty.Sp, "cannot find type `%s` in this scope", aParam.Ty)
 		return nil
 	}
 	return &bir.VarDecl{Ident: (*ir.Ident)(aParam.Ident), Ty: ty}
@@ -213,10 +213,10 @@ func (b *binder) bindBinaryExpr(expr *ast.BinaryExpr) bir.Expr {
 func (b *binder) bindLetExpr(expr *ast.LetExpr) bir.Expr {
 	var ty bir.Ty
 	init := b.bindExpr(expr.Init)
-	if expr.Decl.Ty != nil {
-		ty = lookupTy(expr.Decl.Ty)
-		if ty == bir.TErr {
-			b.error(expr.Decl.Ty.Sp, "cannot find type `%s` in this scope", expr.Decl.Ty.Name)
+	ty = lookupTy(expr.Decl.Ty)
+	if ty != bir.TyInfer {
+		if ty == bir.TyErr {
+			b.error(expr.Decl.Ty.Sp, "cannot find type `%s` in this scope", expr.Decl.Ty)
 			return &bir.ErrExpr{}
 		}
 
@@ -261,7 +261,7 @@ func (b *binder) bindAssignExpr(expr *ast.AssignExpr) bir.Expr {
 
 func (b *binder) bindIfExpr(expr *ast.IfExpr) bir.Expr {
 	cond := b.bindExpr(expr.Cond)
-	if cond.Type() != bir.TBool {
+	if cond.Type() != bir.TyBool {
 		b.error(expr.Cond.Span(), "expected `bool`, but got %s", cond.Type())
 		return &bir.ErrExpr{}
 	}
@@ -357,13 +357,13 @@ func (b *binder) bindArrayExpr(expr *ast.ArrayExpr) bir.Expr {
 
 func (b *binder) bindIndexExpr(expr *ast.IndexExpr) bir.Expr {
 	arr := b.bindExpr(expr.Arr)
-	if arr.Type() != bir.TArray {
+	if arr.Type() != bir.TyArray {
 		b.error(expr.Arr.Span(), "expected an array, but got `%s`", arr.Type())
 		return &bir.ErrExpr{}
 	}
 
 	i := b.bindExpr(expr.I)
-	if i.Type() != bir.TInt {
+	if i.Type() != bir.TyInt {
 		b.error(expr.I.Span(), "expected an integer, but got `%s`", i.Type())
 		return &bir.ErrExpr{}
 	}
@@ -398,7 +398,7 @@ func (b *binder) bindReturnExpr(expr *ast.ReturnExpr) bir.Expr {
 		x = b.bindExpr(expr.X)
 	}
 
-	if b.fn.Out == bir.TUnit && x != nil {
+	if b.fn.Out == bir.TyUnit && x != nil {
 		b.error(
 			expr.X.Span(),
 			"expected this function to return `%s`, but got `%s`",
@@ -425,19 +425,30 @@ func (b *binder) error(span span.Span, format string, a ...any) {
 	diagnostic.NewBuilder(msg, span).WithLabel("here").Emit(b.sess.Diags)
 }
 
-func lookupTy(out *ast.Ident) bir.Ty {
-	if out == nil {
-		return bir.TUnit
-	}
-
-	switch out.Name {
-	case "int":
-		return bir.TInt
-	case "bool":
-		return bir.TBool
-	case "string":
-		return bir.TString
+func lookupTy(ty *ast.Ty) bir.Ty {
+	switch ty.Kind {
+	case ast.TyInfer:
+		return bir.TyInfer
+	case ast.TyArray:
+		return bir.TyArray
+	case ast.TyIdent:
+		return lookUpBasicTy(ty.Ident)
+	case ast.TyUnit:
+		return bir.TyUnit
 	default:
-		return bir.TErr
+		return bir.TyErr
+	}
+}
+
+func lookUpBasicTy(ty *ast.Ident) bir.Ty {
+	switch ty.Name {
+	case "int":
+		return bir.TyInt
+	case "bool":
+		return bir.TyBool
+	case "string":
+		return bir.TyString
+	default:
+		return bir.TyErr
 	}
 }

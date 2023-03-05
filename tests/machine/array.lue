@@ -1,7 +1,10 @@
 // Output:
 // [1, 2, 3]
+// [4, 5, 6]
 
 fn main() {
     let a = [1, 2, 3]
     println(a)
+    let b: [int] = [4, 5, 6]
+    println(b)
 }

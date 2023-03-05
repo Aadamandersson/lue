@@ -153,41 +153,41 @@ func (*ErrExpr) exprNode()        {}
 
 func (e *Fn) Type() Ty             { return e.Out }
 func (e *VarDecl) Type() Ty        { return e.Ty }
-func (e *IntegerLiteral) Type() Ty { return TInt }
-func (e *BooleanLiteral) Type() Ty { return TBool }
-func (e *StringLiteral) Type() Ty  { return TString }
+func (e *IntegerLiteral) Type() Ty { return TyInt }
+func (e *BooleanLiteral) Type() Ty { return TyBool }
+func (e *StringLiteral) Type() Ty  { return TyString }
 func (e *BinaryExpr) Type() Ty     { return e.Op.Ty }
-func (e *LetExpr) Type() Ty        { return TUnit }
-func (e *AssignExpr) Type() Ty     { return TUnit }
+func (e *LetExpr) Type() Ty        { return TyUnit }
+func (e *AssignExpr) Type() Ty     { return TyUnit }
 func (e *IfExpr) Type() Ty         { return e.Then.Type() }
 func (e *BlockExpr) Type() Ty {
 	if len(e.Exprs) == 0 {
-		return TUnit
+		return TyUnit
 	}
 	return e.Exprs[len(e.Exprs)-1].Type()
 }
 func (e *CallExpr) Type() Ty  { return e.Fn.Type() }
-func (e *ArrayExpr) Type() Ty { return TArray }
+func (e *ArrayExpr) Type() Ty { return TyArray }
 func (e *IndexExpr) Type() Ty { return e.Arr.Type() } // FIXME: this should be the element type
 func (e *ForExpr) Type() Ty   { return e.Body.Type() }
 func (e *BreakExpr) Type() Ty {
 	if e.X == nil {
-		return TUnit
+		return TyUnit
 	}
 	return e.X.Type()
 }
 func (e *ReturnExpr) Type() Ty {
 	if e.X == nil {
-		return TUnit
+		return TyUnit
 	}
 	return e.X.Type()
 }
-func (e Intrinsic) Type() Ty { return TUnit }
-func (e *ErrExpr) Type() Ty  { return TErr }
+func (e Intrinsic) Type() Ty { return TyUnit }
+func (e *ErrExpr) Type() Ty  { return TyErr }
 
 func (ae *ArrayExpr) ElemTy() Ty {
 	if len(ae.Exprs) == 0 {
-		return TErr
+		return TyErr
 	}
 	return ae.Exprs[0].Type()
 }
@@ -195,21 +195,23 @@ func (ae *ArrayExpr) ElemTy() Ty {
 type Ty int
 
 const (
-	TErr Ty = iota
-	TInt
-	TBool
-	TString
-	TArray
-	TUnit
+	TyErr Ty = iota
+	TyInfer
+	TyInt
+	TyBool
+	TyString
+	TyArray
+	TyUnit
 )
 
 var tys = [...]string{
-	TErr:    "?",
-	TInt:    "int",
-	TBool:   "bool",
-	TString: "string",
-	TArray:  "[]", // TODO: we want to show the type of the elements as well
-	TUnit:   "()",
+	TyErr:    "?",
+	TyInfer:  "?",
+	TyInt:    "int",
+	TyBool:   "bool",
+	TyString: "string",
+	TyArray:  "[]", // TODO: we want to show the type of the elements as well
+	TyUnit:   "()",
 }
 
 func (t Ty) String() string {
@@ -230,23 +232,23 @@ var binOps = [...]struct {
 	yTy Ty
 	out BinOp
 }{
-	{ast.Add, TInt, TInt, BinOp{Kind: Add, Ty: TInt}},
-	{ast.Sub, TInt, TInt, BinOp{Kind: Sub, Ty: TInt}},
-	{ast.Mul, TInt, TInt, BinOp{Kind: Mul, Ty: TInt}},
-	{ast.Div, TInt, TInt, BinOp{Kind: Div, Ty: TInt}},
+	{ast.Add, TyInt, TyInt, BinOp{Kind: Add, Ty: TyInt}},
+	{ast.Sub, TyInt, TyInt, BinOp{Kind: Sub, Ty: TyInt}},
+	{ast.Mul, TyInt, TyInt, BinOp{Kind: Mul, Ty: TyInt}},
+	{ast.Div, TyInt, TyInt, BinOp{Kind: Div, Ty: TyInt}},
 
-	{ast.Gt, TInt, TInt, BinOp{Kind: Gt, Ty: TBool}},
-	{ast.Lt, TInt, TInt, BinOp{Kind: Lt, Ty: TBool}},
-	{ast.Ge, TInt, TInt, BinOp{Kind: Ge, Ty: TBool}},
-	{ast.Le, TInt, TInt, BinOp{Kind: Le, Ty: TBool}},
+	{ast.Gt, TyInt, TyInt, BinOp{Kind: Gt, Ty: TyBool}},
+	{ast.Lt, TyInt, TyInt, BinOp{Kind: Lt, Ty: TyBool}},
+	{ast.Ge, TyInt, TyInt, BinOp{Kind: Ge, Ty: TyBool}},
+	{ast.Le, TyInt, TyInt, BinOp{Kind: Le, Ty: TyBool}},
 
-	{ast.Eq, TInt, TInt, BinOp{Kind: Eq, Ty: TBool}},
-	{ast.Eq, TBool, TBool, BinOp{Kind: Eq, Ty: TBool}},
-	{ast.Eq, TString, TString, BinOp{Kind: Eq, Ty: TBool}},
+	{ast.Eq, TyInt, TyInt, BinOp{Kind: Eq, Ty: TyBool}},
+	{ast.Eq, TyBool, TyBool, BinOp{Kind: Eq, Ty: TyBool}},
+	{ast.Eq, TyString, TyString, BinOp{Kind: Eq, Ty: TyBool}},
 
-	{ast.Ne, TInt, TInt, BinOp{Kind: Ne, Ty: TBool}},
-	{ast.Ne, TBool, TBool, BinOp{Kind: Ne, Ty: TBool}},
-	{ast.Ne, TString, TString, BinOp{Kind: Ne, Ty: TBool}},
+	{ast.Ne, TyInt, TyInt, BinOp{Kind: Ne, Ty: TyBool}},
+	{ast.Ne, TyBool, TyBool, BinOp{Kind: Ne, Ty: TyBool}},
+	{ast.Ne, TyString, TyString, BinOp{Kind: Ne, Ty: TyBool}},
 }
 
 func BindBinOp(astOp ast.BinOpKind, xTy, yTy Ty) (BinOp, bool) {
