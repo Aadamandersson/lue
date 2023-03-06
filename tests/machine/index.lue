@@ -1,9 +1,11 @@
 // Output:
 // 1
 // 4
+// 3
 
 fn main() {
     let arr = [1, 2, 3, 4]
     println(arr[0])
     println(arr[1 + 2])
+    println(arr[0] + arr[1])
 }

@@ -53,19 +53,19 @@ func (b *binder) bindFnDecl(fn *bir.Fn, sess *session.Session, scope *Scope) {
 	b.fn = fn
 	b.scope = WithOuter(b.scope)
 	fn.In = b.bindParams(fn.Decl.In)
-	var ty bir.Ty
+	var ty *bir.Ty
 	if fn.Decl.Out == nil {
-		ty = bir.TyUnit
+		ty = bir.BasicTys[bir.TyUnit]
 	} else {
 		ty = lookupTy(fn.Decl.Out)
-		if ty == bir.TyErr {
+		if ty.IsErr() {
 			b.error(fn.Decl.Out.Sp, "cannot find type `%s` in this scope", fn.Decl.Out)
 		}
 	}
 
 	body := b.bindExpr(fn.Decl.Body)
 	if blk, ok := body.(*bir.BlockExpr); ok {
-		if ty != bir.TyUnit && len(blk.Exprs) == 0 {
+		if !ty.IsUnit() && len(blk.Exprs) == 0 {
 			b.error(
 				fn.Decl.Out.Sp,
 				"expected this function to return `%s`, but the body is empty",
@@ -127,7 +127,7 @@ func (b *binder) bindParams(aParams []*ast.VarDecl) []*bir.VarDecl {
 
 func (b *binder) bindParam(aParam *ast.VarDecl) *bir.VarDecl {
 	ty := lookupTy(aParam.Ty)
-	if ty == bir.TyErr {
+	if ty.IsErr() {
 		b.error(aParam.Ty.Sp, "cannot find type `%s` in this scope", aParam.Ty)
 		return nil
 	}
@@ -186,7 +186,7 @@ func (b *binder) bindBinaryExpr(expr *ast.BinaryExpr) bir.Expr {
 	if isErr(x) || isErr(y) {
 		return &bir.ErrExpr{}
 	}
-	op, ok := bir.BindBinOp(expr.Op.Kind, x.Type(), y.Type())
+	op, ok := bir.BindBinOp(expr.Op.Kind, x.Type().Kind, y.Type().Kind)
 
 	if !ok {
 		sp := expr.Op.Sp
@@ -211,16 +211,16 @@ func (b *binder) bindBinaryExpr(expr *ast.BinaryExpr) bir.Expr {
 }
 
 func (b *binder) bindLetExpr(expr *ast.LetExpr) bir.Expr {
-	var ty bir.Ty
+	var ty *bir.Ty
 	init := b.bindExpr(expr.Init)
 	ty = lookupTy(expr.Decl.Ty)
-	if ty != bir.TyInfer {
-		if ty == bir.TyErr {
+	if !ty.IsInfer() {
+		if ty.IsErr() {
 			b.error(expr.Decl.Ty.Sp, "cannot find type `%s` in this scope", expr.Decl.Ty)
 			return &bir.ErrExpr{}
 		}
 
-		if ty != init.Type() {
+		if !ty.Equal(init.Type()) {
 			b.error(expr.Init.Span(), "expected `%s`, but got `%s`", ty, init.Type())
 			return &bir.ErrExpr{}
 		}
@@ -261,7 +261,7 @@ func (b *binder) bindAssignExpr(expr *ast.AssignExpr) bir.Expr {
 
 func (b *binder) bindIfExpr(expr *ast.IfExpr) bir.Expr {
 	cond := b.bindExpr(expr.Cond)
-	if cond.Type() != bir.TyBool {
+	if !cond.Type().IsBool() {
 		b.error(expr.Cond.Span(), "expected `bool`, but got %s", cond.Type())
 		return &bir.ErrExpr{}
 	}
@@ -357,13 +357,13 @@ func (b *binder) bindArrayExpr(expr *ast.ArrayExpr) bir.Expr {
 
 func (b *binder) bindIndexExpr(expr *ast.IndexExpr) bir.Expr {
 	arr := b.bindExpr(expr.Arr)
-	if arr.Type() != bir.TyArray {
+	if !arr.Type().IsArray() {
 		b.error(expr.Arr.Span(), "expected an array, but got `%s`", arr.Type())
 		return &bir.ErrExpr{}
 	}
 
 	i := b.bindExpr(expr.I)
-	if i.Type() != bir.TyInt {
+	if !i.Type().IsInt() {
 		b.error(expr.I.Span(), "expected an integer, but got `%s`", i.Type())
 		return &bir.ErrExpr{}
 	}
@@ -398,7 +398,7 @@ func (b *binder) bindReturnExpr(expr *ast.ReturnExpr) bir.Expr {
 		x = b.bindExpr(expr.X)
 	}
 
-	if b.fn.Out == bir.TyUnit && x != nil {
+	if b.fn.Out.IsUnit() && x != nil {
 		b.error(
 			expr.X.Span(),
 			"expected this function to return `%s`, but got `%s`",
@@ -425,30 +425,30 @@ func (b *binder) error(span span.Span, format string, a ...any) {
 	diagnostic.NewBuilder(msg, span).WithLabel("here").Emit(b.sess.Diags)
 }
 
-func lookupTy(ty *ast.Ty) bir.Ty {
+func lookupTy(ty *ast.Ty) *bir.Ty {
 	switch ty.Kind {
 	case ast.TyInfer:
-		return bir.TyInfer
+		return bir.BasicTys[bir.TyInfer]
 	case ast.TyArray:
-		return bir.TyArray
+		return bir.NewArray(lookUpBasicTy(ty.Ident))
 	case ast.TyIdent:
 		return lookUpBasicTy(ty.Ident)
 	case ast.TyUnit:
-		return bir.TyUnit
+		return bir.BasicTys[bir.TyUnit]
 	default:
-		return bir.TyErr
+		return bir.BasicTys[bir.TyErr]
 	}
 }
 
-func lookUpBasicTy(ty *ast.Ident) bir.Ty {
+func lookUpBasicTy(ty *ast.Ident) *bir.Ty {
 	switch ty.Name {
 	case "int":
-		return bir.TyInt
+		return bir.BasicTys[bir.TyInt]
 	case "bool":
-		return bir.TyBool
+		return bir.BasicTys[bir.TyBool]
 	case "string":
-		return bir.TyString
+		return bir.BasicTys[bir.TyString]
 	default:
-		return bir.TyErr
+		return bir.BasicTys[bir.TyErr]
 	}
 }

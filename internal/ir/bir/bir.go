@@ -1,15 +1,13 @@
 package bir
 
 import (
-	"strconv"
-
 	"github.com/aadamandersson/lue/internal/ir"
 	"github.com/aadamandersson/lue/internal/ir/ast"
 )
 
 type (
 	Expr interface {
-		Type() Ty
+		Type() *Ty
 		exprNode()
 	}
 )
@@ -20,7 +18,7 @@ type (
 	Fn struct {
 		Decl *ast.FnDecl
 		In   []*VarDecl
-		Out  Ty
+		Out  *Ty
 		Body Expr
 	}
 
@@ -28,7 +26,7 @@ type (
 	// `ident: ty`
 	VarDecl struct {
 		Ident *ir.Ident
-		Ty    Ty
+		Ty    *Ty
 	}
 
 	// An integer literal.
@@ -151,51 +149,49 @@ func (*ReturnExpr) exprNode()     {}
 func (Intrinsic) exprNode()       {}
 func (*ErrExpr) exprNode()        {}
 
-func (e *Fn) Type() Ty             { return e.Out }
-func (e *VarDecl) Type() Ty        { return e.Ty }
-func (e *IntegerLiteral) Type() Ty { return TyInt }
-func (e *BooleanLiteral) Type() Ty { return TyBool }
-func (e *StringLiteral) Type() Ty  { return TyString }
-func (e *BinaryExpr) Type() Ty     { return e.Op.Ty }
-func (e *LetExpr) Type() Ty        { return TyUnit }
-func (e *AssignExpr) Type() Ty     { return TyUnit }
-func (e *IfExpr) Type() Ty         { return e.Then.Type() }
-func (e *BlockExpr) Type() Ty {
+func (e *Fn) Type() *Ty             { return e.Out }
+func (e *VarDecl) Type() *Ty        { return e.Ty }
+func (e *IntegerLiteral) Type() *Ty { return BasicTys[TyInt] }
+func (e *BooleanLiteral) Type() *Ty { return BasicTys[TyBool] }
+func (e *StringLiteral) Type() *Ty  { return BasicTys[TyString] }
+func (e *BinaryExpr) Type() *Ty     { return e.Op.Ty }
+func (e *LetExpr) Type() *Ty        { return BasicTys[TyUnit] }
+func (e *AssignExpr) Type() *Ty     { return BasicTys[TyUnit] }
+func (e *IfExpr) Type() *Ty         { return e.Then.Type() }
+func (e *BlockExpr) Type() *Ty {
 	if len(e.Exprs) == 0 {
-		return TyUnit
+		return BasicTys[TyUnit]
 	}
 	return e.Exprs[len(e.Exprs)-1].Type()
 }
-func (e *CallExpr) Type() Ty  { return e.Fn.Type() }
-func (e *ArrayExpr) Type() Ty { return TyArray }
-func (e *IndexExpr) Type() Ty { return e.Arr.Type() } // FIXME: this should be the element type
-func (e *ForExpr) Type() Ty   { return e.Body.Type() }
-func (e *BreakExpr) Type() Ty {
+func (e *CallExpr) Type() *Ty { return e.Fn.Type() }
+func (e *ArrayExpr) Type() *Ty {
+	if len(e.Exprs) == 0 {
+		return NewArray(BasicTys[TyInfer])
+	}
+	return NewArray(e.Exprs[0].Type())
+}
+func (e *IndexExpr) Type() *Ty { return e.Arr.(*VarDecl).Ty.Elem }
+func (e *ForExpr) Type() *Ty   { return e.Body.Type() }
+func (e *BreakExpr) Type() *Ty {
 	if e.X == nil {
-		return TyUnit
+		return BasicTys[TyUnit]
 	}
 	return e.X.Type()
 }
-func (e *ReturnExpr) Type() Ty {
+func (e *ReturnExpr) Type() *Ty {
 	if e.X == nil {
-		return TyUnit
+		return BasicTys[TyUnit]
 	}
 	return e.X.Type()
 }
-func (e Intrinsic) Type() Ty { return TyUnit }
-func (e *ErrExpr) Type() Ty  { return TyErr }
+func (e Intrinsic) Type() *Ty { return BasicTys[TyUnit] }
+func (e *ErrExpr) Type() *Ty  { return BasicTys[TyErr] }
 
-func (ae *ArrayExpr) ElemTy() Ty {
-	if len(ae.Exprs) == 0 {
-		return TyErr
-	}
-	return ae.Exprs[0].Type()
-}
-
-type Ty int
+type TyKind int
 
 const (
-	TyErr Ty = iota
+	TyErr TyKind = iota
 	TyInfer
 	TyInt
 	TyBool
@@ -204,54 +200,114 @@ const (
 	TyUnit
 )
 
-var tys = [...]string{
-	TyErr:    "?",
-	TyInfer:  "?",
-	TyInt:    "int",
-	TyBool:   "bool",
-	TyString: "string",
-	TyArray:  "[]", // TODO: we want to show the type of the elements as well
-	TyUnit:   "()",
+var BasicTys = [...]*Ty{
+	TyErr:    {Kind: TyErr},
+	TyInfer:  {Kind: TyInfer},
+	TyInt:    {Kind: TyInt},
+	TyBool:   {Kind: TyBool},
+	TyString: {Kind: TyString},
+	TyUnit:   {Kind: TyUnit},
 }
 
-func (t Ty) String() string {
-	if t < 0 || t >= Ty(len(tys)) {
-		return "Ty(" + strconv.FormatInt(int64(t), 10) + ")"
+type Ty struct {
+	Kind TyKind
+	Elem *Ty
+}
+
+func (t *Ty) IsErr() bool {
+	return t.Kind == TyErr
+}
+
+func (t *Ty) IsInfer() bool {
+	return t.Kind == TyInfer
+}
+
+func (t *Ty) IsInt() bool {
+	return t.Kind == TyInt
+}
+
+func (t *Ty) IsBool() bool {
+	return t.Kind == TyBool
+}
+
+func (t *Ty) IsString() bool {
+	return t.Kind == TyString
+}
+
+func (t *Ty) IsUnit() bool {
+	return t.Kind == TyUnit
+}
+
+func (t *Ty) IsArray() bool {
+	return t.Kind == TyArray
+}
+
+func (t *Ty) Equal(other *Ty) bool {
+	if t.Kind == other.Kind {
+		if t.Kind == TyArray {
+			return t.Elem.Kind == other.Elem.Kind
+		}
+		return true
 	}
-	return tys[t]
+	return false
+}
+
+func NewArray(elem *Ty) *Ty {
+	return &Ty{Kind: TyArray, Elem: elem}
+}
+
+func (t *Ty) String() string {
+	switch t.Kind {
+	case TyErr:
+		return "?"
+	case TyInfer:
+		return "?"
+	case TyInt:
+		return "int"
+	case TyBool:
+		return "bool"
+	case TyString:
+		return "string"
+	case TyArray:
+		return "[" + t.Elem.String() + "]"
+	case TyUnit:
+		return "()"
+	default:
+		panic("unreachable")
+	}
 }
 
 type BinOp struct {
 	Kind BinOpKind
-	Ty   Ty
+	Ty   *Ty
 }
 
 var binOps = [...]struct {
 	in  ast.BinOpKind
-	xTy Ty
-	yTy Ty
+	xTy TyKind
+	yTy TyKind
 	out BinOp
 }{
-	{ast.Add, TyInt, TyInt, BinOp{Kind: Add, Ty: TyInt}},
-	{ast.Sub, TyInt, TyInt, BinOp{Kind: Sub, Ty: TyInt}},
-	{ast.Mul, TyInt, TyInt, BinOp{Kind: Mul, Ty: TyInt}},
-	{ast.Div, TyInt, TyInt, BinOp{Kind: Div, Ty: TyInt}},
+	{ast.Add, TyInt, TyInt, BinOp{Kind: Add, Ty: BasicTys[TyInt]}},
+	{ast.Sub, TyInt, TyInt, BinOp{Kind: Sub, Ty: BasicTys[TyInt]}},
+	{ast.Mul, TyInt, TyInt, BinOp{Kind: Mul, Ty: BasicTys[TyInt]}},
+	{ast.Div, TyInt, TyInt, BinOp{Kind: Div, Ty: BasicTys[TyInt]}},
 
-	{ast.Gt, TyInt, TyInt, BinOp{Kind: Gt, Ty: TyBool}},
-	{ast.Lt, TyInt, TyInt, BinOp{Kind: Lt, Ty: TyBool}},
-	{ast.Ge, TyInt, TyInt, BinOp{Kind: Ge, Ty: TyBool}},
-	{ast.Le, TyInt, TyInt, BinOp{Kind: Le, Ty: TyBool}},
+	{ast.Gt, TyInt, TyInt, BinOp{Kind: Gt, Ty: BasicTys[TyBool]}},
+	{ast.Lt, TyInt, TyInt, BinOp{Kind: Lt, Ty: BasicTys[TyBool]}},
+	{ast.Ge, TyInt, TyInt, BinOp{Kind: Ge, Ty: BasicTys[TyBool]}},
+	{ast.Le, TyInt, TyInt, BinOp{Kind: Le, Ty: BasicTys[TyBool]}},
 
-	{ast.Eq, TyInt, TyInt, BinOp{Kind: Eq, Ty: TyBool}},
-	{ast.Eq, TyBool, TyBool, BinOp{Kind: Eq, Ty: TyBool}},
-	{ast.Eq, TyString, TyString, BinOp{Kind: Eq, Ty: TyBool}},
+	{ast.Eq, TyInt, TyInt, BinOp{Kind: Eq, Ty: BasicTys[TyBool]}},
+	{ast.Eq, TyBool, TyBool, BinOp{Kind: Eq, Ty: BasicTys[TyBool]}},
+	{ast.Eq, TyString, TyString, BinOp{Kind: Eq, Ty: BasicTys[TyBool]}},
 
-	{ast.Ne, TyInt, TyInt, BinOp{Kind: Ne, Ty: TyBool}},
-	{ast.Ne, TyBool, TyBool, BinOp{Kind: Ne, Ty: TyBool}},
-	{ast.Ne, TyString, TyString, BinOp{Kind: Ne, Ty: TyBool}},
+	{ast.Ne, TyInt, TyInt, BinOp{Kind: Ne, Ty: BasicTys[TyBool]}},
+	{ast.Ne, TyBool, TyBool, BinOp{Kind: Ne, Ty: BasicTys[TyBool]}},
+	{ast.Ne, TyString, TyString, BinOp{Kind: Ne, Ty: BasicTys[TyBool]}},
 }
 
-func BindBinOp(astOp ast.BinOpKind, xTy, yTy Ty) (BinOp, bool) {
+func BindBinOp(astOp ast.BinOpKind, xTy, yTy TyKind) (BinOp, bool) {
 	for _, op := range binOps {
 		if op.in == astOp && op.xTy == xTy && op.yTy == yTy {
 			return op.out, true
