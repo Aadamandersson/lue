@@ -1,0 +1,21 @@
+// Output:
+// outer
+// inner
+// done
+
+fn main() {
+    let stop = false
+    for {
+        println("outer")
+        for {
+            println("inner")
+            stop = true
+            break
+        }
+        if stop {
+            break
+        }
+        println("unreachable")
+    }
+    println("done")
+}
