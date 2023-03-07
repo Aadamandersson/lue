@@ -64,11 +64,29 @@ func (f *frame) local(decl *bir.VarDecl) Value {
 	return f.locals[decl]
 }
 
+type heap struct {
+	// FIXME: change Ident to some unique id thats created when allocating a new object
+	objects map[*ir.Ident]Value
+}
+
+func newHeap() *heap {
+	return &heap{objects: make(map[*ir.Ident]Value)}
+}
+
+func (h *heap) insert(id *ir.Ident, value Value) {
+	h.objects[id] = value
+}
+
+func (h *heap) object(id *ir.Ident) Value {
+	return h.objects[id]
+}
+
 type machine struct {
 	sess    *session.Session
 	classes map[string]*bir.Class
 	fns     map[string]*bir.Fn
 	stack   *stack
+	heap    *heap
 	kernel  Kernel
 }
 
@@ -83,6 +101,7 @@ func newMachine(
 		classes: classes,
 		fns:     fns,
 		stack:   newStack(),
+		heap:    newHeap(),
 		kernel:  kernel,
 	}
 }
@@ -105,6 +124,8 @@ func (m *machine) evalExpr(expr bir.Expr) (Value, bool) {
 		return &Fn{Params: fn.In, Body: fn.Body}, true
 	case *bir.VarDecl:
 		return m.stack.peek().local(expr), true
+	case *bir.Class:
+		return m.heap.object((*ir.Ident)(expr.Decl.Ident)), true
 	case *bir.IntegerLiteral:
 		return Integer(expr.V), true
 	case *bir.BooleanLiteral:
@@ -123,6 +144,8 @@ func (m *machine) evalExpr(expr bir.Expr) (Value, bool) {
 		return m.evalBlockExpr(expr)
 	case *bir.CallExpr:
 		return m.evalCallExpr(expr)
+	case *bir.ClassExpr:
+		return m.evalClassExpr(expr)
 	case *bir.ArrayExpr:
 		return m.evalArrayExpr(expr)
 	case *bir.IndexExpr:
@@ -308,6 +331,19 @@ func (m *machine) evalCallExpr(expr *bir.CallExpr) (Value, bool) {
 	}
 
 	panic("unreachable")
+}
+
+func (m *machine) evalClassExpr(expr *bir.ClassExpr) (Value, bool) {
+	var fields []Value
+	for _, f := range expr.Fields {
+		if v, ok := m.evalExpr(f.Expr); ok {
+			m.heap.insert(expr.Ident, v)
+			fields = append(fields, v)
+		} else {
+			return nil, false
+		}
+	}
+	return &Instance{Ident: expr.Ident, Fields: fields}, true
 }
 
 func (m *machine) evalArrayExpr(expr *bir.ArrayExpr) (Value, bool) {

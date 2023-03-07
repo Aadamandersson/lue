@@ -84,6 +84,13 @@ func (*FnDecl) isItem()    {}
 func (*ClassDecl) isItem() {}
 func (*ErrItem) isItem()   {}
 
+// `ident: expr`
+type ExprField struct {
+	Ident *Ident
+	Expr  Expr
+	Sp    span.Span
+}
+
 // Expressions
 type (
 	// An identifier.
@@ -160,6 +167,14 @@ type (
 		Sp   span.Span
 	}
 
+	// A class literal expression.
+	// `class {a: 1, b: 2}`
+	ClassExpr struct {
+		Ident  *Ident
+		Fields []*ExprField
+		Sp     span.Span
+	}
+
 	// An array expression.
 	// `[1, 2, 3]`
 	ArrayExpr struct {
@@ -213,6 +228,7 @@ func (*AssignExpr) isExpr()     {}
 func (*IfExpr) isExpr()         {}
 func (*BlockExpr) isExpr()      {}
 func (*CallExpr) isExpr()       {}
+func (*ClassExpr) isExpr()      {}
 func (*ArrayExpr) isExpr()      {}
 func (*IndexExpr) isExpr()      {}
 func (*ForExpr) isExpr()        {}
@@ -230,6 +246,7 @@ func (e *AssignExpr) Span() span.Span     { return e.Sp }
 func (e *IfExpr) Span() span.Span         { return e.Sp }
 func (e *BlockExpr) Span() span.Span      { return e.Sp }
 func (e *CallExpr) Span() span.Span       { return e.Sp }
+func (e *ClassExpr) Span() span.Span      { return e.Sp }
 func (e *ArrayExpr) Span() span.Span      { return e.Sp }
 func (e *IndexExpr) Span() span.Span      { return e.Sp }
 func (e *ForExpr) Span() span.Span        { return e.Sp }

@@ -321,10 +321,6 @@ func (p *parser) parseBotExpr() ast.Expr {
 		return p.parseForExpr(sp)
 	}
 
-	if sp, ok := p.eat(token.Ident); ok {
-		return &ast.Ident{Name: p.prevTok.Lit, Sp: sp}
-	}
-
 	if sp, ok := p.eat(token.Number); ok {
 		return &ast.IntegerLiteral{V: p.prevTok.Lit, Sp: sp}
 	}
@@ -345,7 +341,54 @@ func (p *parser) parseBotExpr() ast.Expr {
 		return p.parseArrayExpr(sp)
 	}
 
-	return p.parseIdent()
+	ident := p.parseIdent()
+	if ident != nil {
+		return p.parseClassExpr(ident)
+	}
+
+	return ident
+}
+
+func (p *parser) parseClassExpr(ident *ast.Ident) ast.Expr {
+	if _, ok := p.eat(token.LBrace); !ok {
+		return ident
+	}
+
+	var fields []*ast.ExprField
+	for !p.tok.IsOneOf(token.RBrace, token.Eof) {
+		ident := p.parseIdent()
+		if ident == nil {
+			p.error("expected field name, but got `%s`", p.tok.Kind)
+			continue
+		}
+
+		if _, ok := p.eat(token.Colon); !ok {
+			p.error("expected `:`")
+		}
+
+		expr := p.parseExpr()
+		if expr == nil {
+			p.error("expected expression after `:`")
+			continue
+		}
+
+		field := &ast.ExprField{Ident: ident, Expr: expr}
+		fields = append(fields, field)
+
+		if _, ok := p.eat(token.Comma); !ok {
+			break
+		}
+	}
+
+	closeSp, ok := p.eat(token.RBrace)
+	if !ok {
+		p.error("expected closing delimiter `%s`", token.LBrace)
+		return &ast.ErrExpr{}
+	}
+
+	sp := ident.Sp.To(closeSp)
+	return &ast.ClassExpr{Ident: ident, Fields: fields, Sp: sp}
+
 }
 
 // parseArrayExpr parses `[expr, expr...]`

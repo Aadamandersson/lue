@@ -24,6 +24,10 @@ type (
 		Params []*bir.VarDecl
 		Body   bir.Expr
 	}
+	Instance struct {
+		Ident  *ir.Ident
+		Fields []Value
+	}
 	RetVal struct {
 		V Value
 	}
@@ -39,6 +43,7 @@ func (Boolean) sealed()   {}
 func (String) sealed()    {}
 func (*Array) sealed()    {}
 func (*Fn) sealed()       {}
+func (*Instance) sealed() {}
 func (*RetVal) sealed()   {}
 func (*BreakVal) sealed() {}
 func (Intrinsic) sealed() {}
@@ -73,6 +78,23 @@ func (a *Array) String() string {
 
 func (f *Fn) String() string {
 	return "fn"
+}
+
+func (ins *Instance) String() string {
+	var builder strings.Builder
+	builder.WriteString(ins.Ident.Name)
+	builder.WriteByte('{')
+
+	for i := 0; i < len(ins.Fields); i++ {
+		if i > 0 {
+			builder.WriteString(", ")
+		}
+		builder.WriteString(ins.Fields[i].String())
+	}
+
+	builder.WriteByte('}')
+
+	return builder.String()
 }
 
 func (r *RetVal) String() string {

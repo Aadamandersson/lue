@@ -184,6 +184,8 @@ func (b *binder) bindExpr(expr ast.Expr) bir.Expr {
 		return b.bindBlockExpr(expr)
 	case *ast.CallExpr:
 		return b.bindCallExpr(expr)
+	case *ast.ClassExpr:
+		return b.bindClassExpr(expr)
 	case *ast.ArrayExpr:
 		return b.bindArrayExpr(expr)
 	case *ast.IndexExpr:
@@ -351,6 +353,66 @@ func (b *binder) bindCallExpr(expr *ast.CallExpr) bir.Expr {
 		}
 	}
 	return &bir.CallExpr{Fn: fn, Args: args}
+}
+
+func (b *binder) bindClassExpr(expr *ast.ClassExpr) bir.Expr {
+	e, ok := b.scope.Get(expr.Ident.Name)
+	if !ok {
+		b.error(expr.Ident.Sp, "could not find a class named `%s` in this scope", expr.Ident.Name)
+		return &bir.ErrExpr{}
+	}
+
+	c, ok := e.(*bir.Class)
+	if !ok {
+		b.error(expr.Ident.Sp, "`%s` is not a class", expr.Ident.Name)
+		return &bir.ErrExpr{}
+	}
+
+	exprFields := b.bindExprFields(expr.Fields)
+	hasError := false
+	for _, field := range c.Fields {
+		found := false
+		for _, exprField := range exprFields {
+			if field.Ident.Name != exprField.Ident.Name {
+				continue
+			}
+
+			if !field.Ty.Equal(exprField.Expr.Type()) {
+				b.error(
+					field.Ident.Sp,
+					"expected `%s`, but got `%s`",
+					field.Ty,
+					exprField.Expr.Type(),
+				)
+				hasError = true
+			}
+			found = true
+		}
+
+		if !found {
+			b.error(field.Ident.Sp, "missing field `%s` in initializer", field.Ident.Name)
+			hasError = true
+		}
+	}
+
+	if hasError {
+		return &bir.ErrExpr{}
+	}
+
+	return &bir.ClassExpr{Ident: (*ir.Ident)(expr.Ident), Fields: exprFields}
+}
+
+func (b *binder) bindExprFields(aFields []*ast.ExprField) []*bir.ExprField {
+	var fields []*bir.ExprField
+	for _, f := range aFields {
+		fields = append(fields, b.bindExprField(f))
+	}
+	return fields
+}
+
+func (b *binder) bindExprField(aField *ast.ExprField) *bir.ExprField {
+	expr := b.bindExpr(aField.Expr)
+	return &bir.ExprField{Ident: (*ir.Ident)(aField.Ident), Expr: expr}
 }
 
 func (b *binder) bindArrayExpr(expr *ast.ArrayExpr) bir.Expr {

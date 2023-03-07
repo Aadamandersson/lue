@@ -13,6 +13,12 @@ type (
 )
 
 // Expressions
+// `ident: expr`
+type ExprField struct {
+	Ident *ir.Ident
+	Expr  Expr
+}
+
 type (
 	// A reference to a function.
 	Fn struct {
@@ -96,6 +102,13 @@ type (
 		Args []Expr
 	}
 
+	// A class literal expression.
+	// `class {a: 1, b: 2}`
+	ClassExpr struct {
+		Ident  *ir.Ident
+		Fields []*ExprField
+	}
+
 	// An array expression.
 	// `[1, 2, 3]`
 	ArrayExpr struct {
@@ -148,6 +161,7 @@ func (*AssignExpr) isExpr()     {}
 func (*IfExpr) isExpr()         {}
 func (*BlockExpr) isExpr()      {}
 func (*CallExpr) isExpr()       {}
+func (*ClassExpr) isExpr()      {}
 func (*ArrayExpr) isExpr()      {}
 func (*IndexExpr) isExpr()      {}
 func (*ForExpr) isExpr()        {}
@@ -172,7 +186,8 @@ func (e *BlockExpr) Type() *Ty {
 	}
 	return e.Exprs[len(e.Exprs)-1].Type()
 }
-func (e *CallExpr) Type() *Ty { return e.Fn.Type() }
+func (e *CallExpr) Type() *Ty  { return e.Fn.Type() }
+func (e *ClassExpr) Type() *Ty { return NewClass(e.Ident) }
 func (e *ArrayExpr) Type() *Ty {
 	if len(e.Exprs) == 0 {
 		return NewArray(BasicTys[TyInfer])
