@@ -11,12 +11,12 @@ import (
 
 type (
 	Item interface {
-		itemNode()
+		isItem()
 	}
 
 	Expr interface {
 		Span() span.Span
-		exprNode()
+		isExpr()
 	}
 )
 
@@ -72,8 +72,8 @@ func (t *Ty) String() string {
 }
 
 // Ensure that we can only assign item nodes to an Item.
-func (*FnDecl) itemNode()  {}
-func (*ErrItem) itemNode() {}
+func (*FnDecl) isItem()  {}
+func (*ErrItem) isItem() {}
 
 // Expressions
 type (
@@ -194,22 +194,22 @@ type (
 )
 
 // Ensure that we can only assign expression nodes to an Expr.
-func (*Ident) exprNode()          {}
-func (*IntegerLiteral) exprNode() {}
-func (*BooleanLiteral) exprNode() {}
-func (*StringLiteral) exprNode()  {}
-func (*BinaryExpr) exprNode()     {}
-func (*LetExpr) exprNode()        {}
-func (*AssignExpr) exprNode()     {}
-func (*IfExpr) exprNode()         {}
-func (*BlockExpr) exprNode()      {}
-func (*CallExpr) exprNode()       {}
-func (*ArrayExpr) exprNode()      {}
-func (*IndexExpr) exprNode()      {}
-func (*ForExpr) exprNode()        {}
-func (*BreakExpr) exprNode()      {}
-func (*ReturnExpr) exprNode()     {}
-func (*ErrExpr) exprNode()        {}
+func (*Ident) isExpr()          {}
+func (*IntegerLiteral) isExpr() {}
+func (*BooleanLiteral) isExpr() {}
+func (*StringLiteral) isExpr()  {}
+func (*BinaryExpr) isExpr()     {}
+func (*LetExpr) isExpr()        {}
+func (*AssignExpr) isExpr()     {}
+func (*IfExpr) isExpr()         {}
+func (*BlockExpr) isExpr()      {}
+func (*CallExpr) isExpr()       {}
+func (*ArrayExpr) isExpr()      {}
+func (*IndexExpr) isExpr()      {}
+func (*ForExpr) isExpr()        {}
+func (*BreakExpr) isExpr()      {}
+func (*ReturnExpr) isExpr()     {}
+func (*ErrExpr) isExpr()        {}
 
 func (e *Ident) Span() span.Span          { return e.Sp }
 func (e *IntegerLiteral) Span() span.Span { return e.Sp }

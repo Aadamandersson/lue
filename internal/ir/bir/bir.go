@@ -8,7 +8,7 @@ import (
 type (
 	Expr interface {
 		Type() *Ty
-		exprNode()
+		isExpr()
 	}
 )
 
@@ -130,24 +130,24 @@ type (
 )
 
 // Ensure that we can only assign expression nodes to an Expr.
-func (*Fn) exprNode()             {}
-func (*VarDecl) exprNode()        {}
-func (*IntegerLiteral) exprNode() {}
-func (*BooleanLiteral) exprNode() {}
-func (*StringLiteral) exprNode()  {}
-func (*BinaryExpr) exprNode()     {}
-func (*LetExpr) exprNode()        {}
-func (*AssignExpr) exprNode()     {}
-func (*IfExpr) exprNode()         {}
-func (*BlockExpr) exprNode()      {}
-func (*CallExpr) exprNode()       {}
-func (*ArrayExpr) exprNode()      {}
-func (*IndexExpr) exprNode()      {}
-func (*ForExpr) exprNode()        {}
-func (*BreakExpr) exprNode()      {}
-func (*ReturnExpr) exprNode()     {}
-func (Intrinsic) exprNode()       {}
-func (*ErrExpr) exprNode()        {}
+func (*Fn) isExpr()             {}
+func (*VarDecl) isExpr()        {}
+func (*IntegerLiteral) isExpr() {}
+func (*BooleanLiteral) isExpr() {}
+func (*StringLiteral) isExpr()  {}
+func (*BinaryExpr) isExpr()     {}
+func (*LetExpr) isExpr()        {}
+func (*AssignExpr) isExpr()     {}
+func (*IfExpr) isExpr()         {}
+func (*BlockExpr) isExpr()      {}
+func (*CallExpr) isExpr()       {}
+func (*ArrayExpr) isExpr()      {}
+func (*IndexExpr) isExpr()      {}
+func (*ForExpr) isExpr()        {}
+func (*BreakExpr) isExpr()      {}
+func (*ReturnExpr) isExpr()     {}
+func (Intrinsic) isExpr()       {}
+func (*ErrExpr) isExpr()        {}
 
 func (e *Fn) Type() *Ty             { return e.Out }
 func (e *VarDecl) Type() *Ty        { return e.Ty }
