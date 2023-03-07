@@ -11,8 +11,8 @@ import (
 func Interpret(filename string, src []byte, kernel Kernel) bool {
 	sess := session.New(filename, src)
 	aItems := parser.Parse(sess)
-	fns := binder.Bind(aItems, sess)
-	m := newMachine(fns, sess, kernel)
+	classes, fns := binder.Bind(aItems, sess)
+	m := newMachine(classes, fns, sess, kernel)
 	ok := m.interpret()
 
 	if !sess.Diags.Empty() {
@@ -65,18 +65,25 @@ func (f *frame) local(decl *bir.VarDecl) Value {
 }
 
 type machine struct {
-	sess   *session.Session
-	fns    map[string]*bir.Fn
-	stack  *stack
-	kernel Kernel
+	sess    *session.Session
+	classes map[string]*bir.Class
+	fns     map[string]*bir.Fn
+	stack   *stack
+	kernel  Kernel
 }
 
-func newMachine(fns map[string]*bir.Fn, sess *session.Session, kernel Kernel) *machine {
+func newMachine(
+	classes map[string]*bir.Class,
+	fns map[string]*bir.Fn,
+	sess *session.Session,
+	kernel Kernel,
+) *machine {
 	return &machine{
-		sess:   sess,
-		fns:    fns,
-		stack:  newStack(),
-		kernel: kernel,
+		sess:    sess,
+		classes: classes,
+		fns:     fns,
+		stack:   newStack(),
+		kernel:  kernel,
 	}
 }
 

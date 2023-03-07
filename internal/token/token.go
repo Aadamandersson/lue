@@ -34,6 +34,7 @@ const (
 	RBrack              // `]`
 	RBrace              // `}`
 	Break               // `break`
+	Class               // `class`
 	Else                // `else`
 	False               // `false`
 	Fn                  // `fn`
@@ -71,6 +72,7 @@ var tokens = [...]string{
 	RBrack:  "]",
 	RBrace:  "}",
 	Break:   "break",
+	Class:   "class",
 	Else:    "else",
 	False:   "false",
 	Fn:      "fn",
@@ -119,6 +121,7 @@ func (t Token) IsOneOf(ks ...Kind) bool {
 }
 
 var keywords = map[string]Kind{
+	"class":  Class,
 	"break":  Break,
 	"else":   Else,
 	"false":  False,

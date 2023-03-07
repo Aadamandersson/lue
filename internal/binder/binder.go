@@ -12,16 +12,16 @@ import (
 	"github.com/aadamandersson/lue/internal/span"
 )
 
-func Bind(items []ast.Item, sess *session.Session) map[string]*bir.Fn {
+func Bind(items []ast.Item, sess *session.Session) (map[string]*bir.Class, map[string]*bir.Fn) {
 	scope := bindGlobalScope(items, sess)
 	fns := scope.Functions()
-
+	classes := scope.Classes()
 	b := new(sess, scope)
 	for _, fn := range fns {
 		b.bindFnDecl(fn, sess, scope)
 	}
 
-	return fns
+	return classes, fns
 }
 
 func bindGlobalScope(aItems []ast.Item, sess *session.Session) *Scope {
@@ -30,9 +30,14 @@ func bindGlobalScope(aItems []ast.Item, sess *session.Session) *Scope {
 	for _, aItem := range aItems {
 		switch aItem := aItem.(type) {
 		case *ast.FnDecl:
-			fn := &bir.Fn{Decl: aItem, Out: lookupTy(aItem.Out)}
+			fn := &bir.Fn{Decl: aItem, Out: b.lookupTy(aItem.Out)}
 			if _, exists := scope.Insert(aItem.Ident.Name, fn); exists {
 				b.error(aItem.Ident.Sp, "function `%s` already exists", aItem.Ident.Name)
+			}
+		case *ast.ClassDecl:
+			class := &bir.Class{Decl: aItem, Fields: b.bindFields(aItem.Fields)}
+			if _, exists := scope.Insert(aItem.Ident.Name, class); exists {
+				b.error(aItem.Ident.Sp, "class `%s` already exists", aItem.Ident.Name)
 			}
 		case *ast.ErrItem:
 			continue
@@ -57,7 +62,7 @@ func (b *binder) bindFnDecl(fn *bir.Fn, sess *session.Session, scope *Scope) {
 	if fn.Decl.Out == nil {
 		ty = bir.BasicTys[bir.TyUnit]
 	} else {
-		ty = lookupTy(fn.Decl.Out)
+		ty = b.lookupTy(fn.Decl.Out)
 		if ty.IsErr() {
 			b.error(fn.Decl.Out.Sp, "cannot find type `%s` in this scope", fn.Decl.Out)
 		}
@@ -115,7 +120,7 @@ func (b *binder) bindParams(aParams []*ast.VarDecl) []*bir.VarDecl {
 			b.error(aParam.Ident.Sp, "parameter `%s` already exists", aParam.Ident.Name)
 		} else {
 			seen[aParam.Ident.Name] = true
-			param := b.bindParam(aParam)
+			param := b.bindVarDecl(aParam)
 			if param != nil {
 				params = append(params, param)
 				b.scope.Insert(aParam.Ident.Name, param)
@@ -125,13 +130,28 @@ func (b *binder) bindParams(aParams []*ast.VarDecl) []*bir.VarDecl {
 	return params
 }
 
-func (b *binder) bindParam(aParam *ast.VarDecl) *bir.VarDecl {
-	ty := lookupTy(aParam.Ty)
+func (b *binder) bindFields(aFields []*ast.VarDecl) []*bir.VarDecl {
+	var fields []*bir.VarDecl
+	seen := make(map[string]bool, len(aFields))
+	for _, aField := range aFields {
+		if ok := seen[aField.Ident.Name]; ok {
+			b.error(aField.Ident.Sp, "field `%s` already exists", aField.Ident.Name)
+		} else {
+			seen[aField.Ident.Name] = true
+			field := b.bindVarDecl(aField)
+			fields = append(fields, field)
+		}
+	}
+	return fields
+}
+
+func (b *binder) bindVarDecl(decl *ast.VarDecl) *bir.VarDecl {
+	ty := b.lookupTy(decl.Ty)
 	if ty.IsErr() {
-		b.error(aParam.Ty.Sp, "cannot find type `%s` in this scope", aParam.Ty)
+		b.error(decl.Ty.Sp, "cannot find type `%s` in this scope", decl.Ty)
 		return nil
 	}
-	return &bir.VarDecl{Ident: (*ir.Ident)(aParam.Ident), Ty: ty}
+	return &bir.VarDecl{Ident: (*ir.Ident)(decl.Ident), Ty: ty}
 }
 
 func (b *binder) bindExpr(expr ast.Expr) bir.Expr {
@@ -213,7 +233,7 @@ func (b *binder) bindBinaryExpr(expr *ast.BinaryExpr) bir.Expr {
 func (b *binder) bindLetExpr(expr *ast.LetExpr) bir.Expr {
 	var ty *bir.Ty
 	init := b.bindExpr(expr.Init)
-	ty = lookupTy(expr.Decl.Ty)
+	ty = b.lookupTy(expr.Decl.Ty)
 	if !ty.IsInfer() {
 		if ty.IsErr() {
 			b.error(expr.Decl.Ty.Sp, "cannot find type `%s` in this scope", expr.Decl.Ty)
@@ -425,13 +445,16 @@ func (b *binder) error(span span.Span, format string, a ...any) {
 	diagnostic.NewBuilder(msg, span).WithLabel("here").Emit(b.sess.Diags)
 }
 
-func lookupTy(ty *ast.Ty) *bir.Ty {
+func (b *binder) lookupTy(ty *ast.Ty) *bir.Ty {
 	switch ty.Kind {
 	case ast.TyInfer:
 		return bir.BasicTys[bir.TyInfer]
 	case ast.TyArray:
 		return bir.NewArray(lookUpBasicTy(ty.Ident))
 	case ast.TyIdent:
+		if _, ok := b.scope.Get(ty.Ident.Name); ok {
+			return bir.NewClass((*ir.Ident)(ty.Ident))
+		}
 		return lookUpBasicTy(ty.Ident)
 	case ast.TyUnit:
 		return bir.BasicTys[bir.TyUnit]

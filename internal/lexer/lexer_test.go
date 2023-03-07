@@ -44,6 +44,7 @@ var cases = []struct {
 	{")", token.New(token.RParen, "", span.New(0, 1))},
 	{"]", token.New(token.RBrack, "", span.New(0, 1))},
 	{"}", token.New(token.RBrace, "", span.New(0, 1))},
+	{"class", token.New(token.Class, "class", span.New(0, 5))},
 	{"break", token.New(token.Break, "break", span.New(0, 5))},
 	{"else", token.New(token.Else, "else", span.New(0, 4))},
 	{"false", token.New(token.False, "false", span.New(0, 5))},

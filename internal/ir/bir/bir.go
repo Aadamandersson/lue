@@ -22,6 +22,12 @@ type (
 		Body Expr
 	}
 
+	// A reference to a class.
+	Class struct {
+		Decl   *ast.ClassDecl
+		Fields []*VarDecl
+	}
+
 	// A variable declaration.
 	// `ident: ty`
 	VarDecl struct {
@@ -131,6 +137,7 @@ type (
 
 // Ensure that we can only assign expression nodes to an Expr.
 func (*Fn) isExpr()             {}
+func (*Class) isExpr()          {}
 func (*VarDecl) isExpr()        {}
 func (*IntegerLiteral) isExpr() {}
 func (*BooleanLiteral) isExpr() {}
@@ -150,6 +157,7 @@ func (Intrinsic) isExpr()       {}
 func (*ErrExpr) isExpr()        {}
 
 func (e *Fn) Type() *Ty             { return e.Out }
+func (e *Class) Type() *Ty          { return NewClass((*ir.Ident)(e.Decl.Ident)) }
 func (e *VarDecl) Type() *Ty        { return e.Ty }
 func (e *IntegerLiteral) Type() *Ty { return BasicTys[TyInt] }
 func (e *BooleanLiteral) Type() *Ty { return BasicTys[TyBool] }
@@ -197,6 +205,7 @@ const (
 	TyBool
 	TyString
 	TyArray
+	TyClass
 	TyUnit
 )
 
@@ -210,8 +219,9 @@ var BasicTys = [...]*Ty{
 }
 
 type Ty struct {
-	Kind TyKind
-	Elem *Ty
+	Kind  TyKind
+	Elem  *Ty
+	Class *ir.Ident
 }
 
 func (t *Ty) IsErr() bool {
@@ -254,6 +264,10 @@ func (t *Ty) Equal(other *Ty) bool {
 
 func NewArray(elem *Ty) *Ty {
 	return &Ty{Kind: TyArray, Elem: elem}
+}
+
+func NewClass(ident *ir.Ident) *Ty {
+	return &Ty{Kind: TyClass, Class: ident}
 }
 
 func (t *Ty) String() string {

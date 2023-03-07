@@ -46,15 +46,18 @@ func (p *parser) parse() []ast.Item {
 }
 
 func (p *parser) parseItem() ast.Item {
-	if fnSpan, ok := p.eat(token.Fn); ok {
-		return p.parseFnDecl(fnSpan)
+	if fnSp, ok := p.eat(token.Fn); ok {
+		return p.parseFnDecl(fnSp)
+	}
+	if classSp, ok := p.eat(token.Class); ok {
+		return p.parseClassDecl(classSp)
 	}
 	return nil
 }
 
 // parseFnDecl parses a function declaration, `fn` token already eaten.
 // `fn ident([params]) [:ty] { exprs }`
-func (p *parser) parseFnDecl(fnSpan span.Span) ast.Item {
+func (p *parser) parseFnDecl(fnSp span.Span) ast.Item {
 	ident := p.parseIdent()
 	if ident == nil {
 		p.error("expected function name, but got `%s`", p.tok.Kind)
@@ -77,8 +80,57 @@ func (p *parser) parseFnDecl(fnSpan span.Span) ast.Item {
 	}
 
 	body := p.parseBlockExpr()
-	sp := fnSpan.To(body.Span())
+	sp := fnSp.To(body.Span())
 	return &ast.FnDecl{Ident: ident, In: params, Out: ty, Body: body, Sp: sp}
+}
+
+// parseClassDecl parses `class ident { fields }`.
+// `class` token already eaten.
+func (p *parser) parseClassDecl(classSp span.Span) ast.Item {
+	ident := p.parseIdent()
+	if ident == nil {
+		p.error("expected class name, but got `%s`", p.tok.Kind)
+		return &ast.ErrItem{}
+	}
+
+	if _, ok := p.eat(token.LBrace); !ok {
+		p.error("expected opening delimiter `%s`", token.LBrace)
+		return &ast.ErrItem{}
+	}
+
+	var fields []*ast.VarDecl
+	for !p.tok.IsOneOf(token.RBrace, token.Eof) {
+		ident := p.parseIdent()
+		if ident == nil {
+			p.error("expected field name, but got `%s`", p.tok.Kind)
+			continue
+		}
+
+		if _, ok := p.eat(token.Colon); !ok {
+			p.error("expected `:`")
+		}
+
+		ty := p.parseTy()
+		if ty == nil {
+			continue
+		}
+
+		field := &ast.VarDecl{Ident: ident, Ty: ty}
+		fields = append(fields, field)
+
+		if _, ok := p.eat(token.Comma); !ok {
+			break
+		}
+	}
+
+	closeSp, ok := p.eat(token.RBrace)
+	if !ok {
+		p.error("expected closing delimiter `%s`", token.LBrace)
+		return &ast.ErrItem{}
+	}
+
+	sp := classSp.To(closeSp)
+	return &ast.ClassDecl{Ident: ident, Fields: fields, Sp: sp}
 }
 
 func (p *parser) parseParams() []*ast.VarDecl {

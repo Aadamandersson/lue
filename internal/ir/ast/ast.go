@@ -32,6 +32,14 @@ type (
 		Sp    span.Span
 	}
 
+	// A class declaration.
+	// `class ident { fields }`
+	ClassDecl struct {
+		Ident  *Ident
+		Fields []*VarDecl
+		Sp     span.Span
+	}
+
 	// Placeholder when we have some parse error.
 	ErrItem struct{}
 )
@@ -72,8 +80,9 @@ func (t *Ty) String() string {
 }
 
 // Ensure that we can only assign item nodes to an Item.
-func (*FnDecl) isItem()  {}
-func (*ErrItem) isItem() {}
+func (*FnDecl) isItem()    {}
+func (*ClassDecl) isItem() {}
+func (*ErrItem) isItem()   {}
 
 // Expressions
 type (
