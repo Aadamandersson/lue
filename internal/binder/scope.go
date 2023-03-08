@@ -55,3 +55,14 @@ func (s *Scope) Functions() map[string]*bir.Fn {
 	}
 	return fns
 }
+
+func (s *Scope) Classes() map[string]*bir.Class {
+	classes := make(map[string]*bir.Class, 1)
+	for _, c := range s.defs {
+		switch f := c.(type) {
+		case *bir.Class:
+			classes[f.Decl.Ident.Name] = f
+		}
+	}
+	return classes
+}

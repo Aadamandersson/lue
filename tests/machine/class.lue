@@ -1,0 +1,12 @@
+// Output:
+// Foo{123, 456}
+
+class Foo {
+    x: int,
+    y: int,
+}
+
+fn main() {
+    let foo = Foo { x: 123, y: 456 }
+    println(foo)
+}

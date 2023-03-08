@@ -13,6 +13,12 @@ type (
 )
 
 // Expressions
+// `ident: expr`
+type ExprField struct {
+	Ident *ir.Ident
+	Expr  Expr
+}
+
 type (
 	// A reference to a function.
 	Fn struct {
@@ -20,6 +26,12 @@ type (
 		In   []*VarDecl
 		Out  *Ty
 		Body Expr
+	}
+
+	// A reference to a class.
+	Class struct {
+		Decl   *ast.ClassDecl
+		Fields []*VarDecl
 	}
 
 	// A variable declaration.
@@ -90,6 +102,21 @@ type (
 		Args []Expr
 	}
 
+	// A class literal expression.
+	// `class {a: 1, b: 2}`
+	ClassExpr struct {
+		Ident  *ir.Ident
+		Fields []*ExprField
+	}
+
+	// A field expression.
+	// `expr.ident`
+	FieldExpr struct {
+		Expr  Expr
+		Ident *ir.Ident
+		Ty    *Ty
+	}
+
 	// An array expression.
 	// `[1, 2, 3]`
 	ArrayExpr struct {
@@ -131,6 +158,7 @@ type (
 
 // Ensure that we can only assign expression nodes to an Expr.
 func (*Fn) isExpr()             {}
+func (*Class) isExpr()          {}
 func (*VarDecl) isExpr()        {}
 func (*IntegerLiteral) isExpr() {}
 func (*BooleanLiteral) isExpr() {}
@@ -141,6 +169,8 @@ func (*AssignExpr) isExpr()     {}
 func (*IfExpr) isExpr()         {}
 func (*BlockExpr) isExpr()      {}
 func (*CallExpr) isExpr()       {}
+func (*ClassExpr) isExpr()      {}
+func (*FieldExpr) isExpr()      {}
 func (*ArrayExpr) isExpr()      {}
 func (*IndexExpr) isExpr()      {}
 func (*ForExpr) isExpr()        {}
@@ -150,6 +180,7 @@ func (Intrinsic) isExpr()       {}
 func (*ErrExpr) isExpr()        {}
 
 func (e *Fn) Type() *Ty             { return e.Out }
+func (e *Class) Type() *Ty          { return NewClass((*ir.Ident)(e.Decl.Ident)) }
 func (e *VarDecl) Type() *Ty        { return e.Ty }
 func (e *IntegerLiteral) Type() *Ty { return BasicTys[TyInt] }
 func (e *BooleanLiteral) Type() *Ty { return BasicTys[TyBool] }
@@ -164,7 +195,9 @@ func (e *BlockExpr) Type() *Ty {
 	}
 	return e.Exprs[len(e.Exprs)-1].Type()
 }
-func (e *CallExpr) Type() *Ty { return e.Fn.Type() }
+func (e *CallExpr) Type() *Ty  { return e.Fn.Type() }
+func (e *ClassExpr) Type() *Ty { return NewClass(e.Ident) }
+func (e *FieldExpr) Type() *Ty { return e.Ty }
 func (e *ArrayExpr) Type() *Ty {
 	if len(e.Exprs) == 0 {
 		return NewArray(BasicTys[TyInfer])
@@ -197,6 +230,7 @@ const (
 	TyBool
 	TyString
 	TyArray
+	TyClass
 	TyUnit
 )
 
@@ -210,8 +244,9 @@ var BasicTys = [...]*Ty{
 }
 
 type Ty struct {
-	Kind TyKind
-	Elem *Ty
+	Kind  TyKind
+	Elem  *Ty
+	Class *ir.Ident
 }
 
 func (t *Ty) IsErr() bool {
@@ -242,6 +277,10 @@ func (t *Ty) IsArray() bool {
 	return t.Kind == TyArray
 }
 
+func (t *Ty) IsClass() bool {
+	return t.Kind == TyClass
+}
+
 func (t *Ty) Equal(other *Ty) bool {
 	if t.Kind == other.Kind {
 		if t.Kind == TyArray {
@@ -254,6 +293,10 @@ func (t *Ty) Equal(other *Ty) bool {
 
 func NewArray(elem *Ty) *Ty {
 	return &Ty{Kind: TyArray, Elem: elem}
+}
+
+func NewClass(ident *ir.Ident) *Ty {
+	return &Ty{Kind: TyClass, Class: ident}
 }
 
 func (t *Ty) String() string {
@@ -270,6 +313,8 @@ func (t *Ty) String() string {
 		return "string"
 	case TyArray:
 		return "[" + t.Elem.String() + "]"
+	case TyClass:
+		return t.Class.Name
 	case TyUnit:
 		return "()"
 	default:

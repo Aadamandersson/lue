@@ -32,6 +32,14 @@ type (
 		Sp    span.Span
 	}
 
+	// A class declaration.
+	// `class ident { fields }`
+	ClassDecl struct {
+		Ident  *Ident
+		Fields []*VarDecl
+		Sp     span.Span
+	}
+
 	// Placeholder when we have some parse error.
 	ErrItem struct{}
 )
@@ -72,8 +80,16 @@ func (t *Ty) String() string {
 }
 
 // Ensure that we can only assign item nodes to an Item.
-func (*FnDecl) isItem()  {}
-func (*ErrItem) isItem() {}
+func (*FnDecl) isItem()    {}
+func (*ClassDecl) isItem() {}
+func (*ErrItem) isItem()   {}
+
+// `ident: expr`
+type ExprField struct {
+	Ident *Ident
+	Expr  Expr
+	Sp    span.Span
+}
 
 // Expressions
 type (
@@ -151,6 +167,22 @@ type (
 		Sp   span.Span
 	}
 
+	// A class literal expression.
+	// `class {a: 1, b: 2}`
+	ClassExpr struct {
+		Ident  *Ident
+		Fields []*ExprField
+		Sp     span.Span
+	}
+
+	// A field expression.
+	// `expr.ident`
+	FieldExpr struct {
+		Expr  Expr
+		Ident *Ident
+		Sp    span.Span
+	}
+
 	// An array expression.
 	// `[1, 2, 3]`
 	ArrayExpr struct {
@@ -204,6 +236,8 @@ func (*AssignExpr) isExpr()     {}
 func (*IfExpr) isExpr()         {}
 func (*BlockExpr) isExpr()      {}
 func (*CallExpr) isExpr()       {}
+func (*ClassExpr) isExpr()      {}
+func (*FieldExpr) isExpr()      {}
 func (*ArrayExpr) isExpr()      {}
 func (*IndexExpr) isExpr()      {}
 func (*ForExpr) isExpr()        {}
@@ -221,6 +255,8 @@ func (e *AssignExpr) Span() span.Span     { return e.Sp }
 func (e *IfExpr) Span() span.Span         { return e.Sp }
 func (e *BlockExpr) Span() span.Span      { return e.Sp }
 func (e *CallExpr) Span() span.Span       { return e.Sp }
+func (e *ClassExpr) Span() span.Span      { return e.Sp }
+func (e *FieldExpr) Span() span.Span      { return e.Sp }
 func (e *ArrayExpr) Span() span.Span      { return e.Sp }
 func (e *IndexExpr) Span() span.Span      { return e.Sp }
 func (e *ForExpr) Span() span.Span        { return e.Sp }
