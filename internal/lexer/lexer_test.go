@@ -38,6 +38,7 @@ var cases = []struct {
 	{"!=", token.New(token.Ne, "", span.New(0, 2))},
 	{":", token.New(token.Colon, "", span.New(0, 1))},
 	{",", token.New(token.Comma, "", span.New(0, 1))},
+	{".", token.New(token.Dot, "", span.New(0, 1))},
 	{"(", token.New(token.LParen, "", span.New(0, 1))},
 	{"[", token.New(token.LBrack, "", span.New(0, 1))},
 	{"{", token.New(token.LBrace, "", span.New(0, 1))},

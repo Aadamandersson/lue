@@ -27,6 +27,7 @@ const (
 	Ne                  // `!=`
 	Colon               // `:`
 	Comma               // `,`
+	Dot                 // `.`
 	LParen              // `(`
 	LBrack              // `[`
 	LBrace              // `{`
@@ -65,6 +66,7 @@ var tokens = [...]string{
 	Ne:      "!=",
 	Colon:   ":",
 	Comma:   ",",
+	Dot:     ".",
 	LParen:  "(",
 	LBrack:  "[",
 	LBrace:  "{",

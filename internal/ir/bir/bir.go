@@ -109,6 +109,14 @@ type (
 		Fields []*ExprField
 	}
 
+	// A field expression.
+	// `expr.ident`
+	FieldExpr struct {
+		Expr  Expr
+		Ident *ir.Ident
+		Ty    *Ty
+	}
+
 	// An array expression.
 	// `[1, 2, 3]`
 	ArrayExpr struct {
@@ -162,6 +170,7 @@ func (*IfExpr) isExpr()         {}
 func (*BlockExpr) isExpr()      {}
 func (*CallExpr) isExpr()       {}
 func (*ClassExpr) isExpr()      {}
+func (*FieldExpr) isExpr()      {}
 func (*ArrayExpr) isExpr()      {}
 func (*IndexExpr) isExpr()      {}
 func (*ForExpr) isExpr()        {}
@@ -188,6 +197,7 @@ func (e *BlockExpr) Type() *Ty {
 }
 func (e *CallExpr) Type() *Ty  { return e.Fn.Type() }
 func (e *ClassExpr) Type() *Ty { return NewClass(e.Ident) }
+func (e *FieldExpr) Type() *Ty { return e.Ty }
 func (e *ArrayExpr) Type() *Ty {
 	if len(e.Exprs) == 0 {
 		return NewArray(BasicTys[TyInfer])
@@ -267,6 +277,10 @@ func (t *Ty) IsArray() bool {
 	return t.Kind == TyArray
 }
 
+func (t *Ty) IsClass() bool {
+	return t.Kind == TyClass
+}
+
 func (t *Ty) Equal(other *Ty) bool {
 	if t.Kind == other.Kind {
 		if t.Kind == TyArray {
@@ -299,6 +313,8 @@ func (t *Ty) String() string {
 		return "string"
 	case TyArray:
 		return "[" + t.Elem.String() + "]"
+	case TyClass:
+		return t.Class.Name
 	case TyUnit:
 		return "()"
 	default:

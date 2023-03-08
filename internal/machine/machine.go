@@ -146,6 +146,8 @@ func (m *machine) evalExpr(expr bir.Expr) (Value, bool) {
 		return m.evalCallExpr(expr)
 	case *bir.ClassExpr:
 		return m.evalClassExpr(expr)
+	case *bir.FieldExpr:
+		return m.evalFieldExpr(expr)
 	case *bir.ArrayExpr:
 		return m.evalArrayExpr(expr)
 	case *bir.IndexExpr:
@@ -334,16 +336,24 @@ func (m *machine) evalCallExpr(expr *bir.CallExpr) (Value, bool) {
 }
 
 func (m *machine) evalClassExpr(expr *bir.ClassExpr) (Value, bool) {
-	var fields []Value
+	fields := make(map[string]Value, len(expr.Fields))
 	for _, f := range expr.Fields {
 		if v, ok := m.evalExpr(f.Expr); ok {
 			m.heap.insert(expr.Ident, v)
-			fields = append(fields, v)
+			fields[f.Ident.Name] = v
 		} else {
 			return nil, false
 		}
 	}
 	return &Instance{Ident: expr.Ident, Fields: fields}, true
+}
+
+func (m *machine) evalFieldExpr(expr *bir.FieldExpr) (Value, bool) {
+	v, ok := m.evalExpr(expr.Expr)
+	if !ok {
+		return nil, ok
+	}
+	return v.(*Instance).Get(expr.Ident), true
 }
 
 func (m *machine) evalArrayExpr(expr *bir.ArrayExpr) (Value, bool) {

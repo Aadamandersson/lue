@@ -26,7 +26,7 @@ type (
 	}
 	Instance struct {
 		Ident  *ir.Ident
-		Fields []Value
+		Fields map[string]Value
 	}
 	RetVal struct {
 		V Value
@@ -85,13 +85,15 @@ func (ins *Instance) String() string {
 	builder.WriteString(ins.Ident.Name)
 	builder.WriteByte('{')
 
-	for i := 0; i < len(ins.Fields); i++ {
+	i := 0
+	for _, f := range ins.Fields {
 		if i > 0 {
 			builder.WriteString(", ")
 		}
-		builder.WriteString(ins.Fields[i].String())
-	}
 
+		builder.WriteString(f.String())
+		i += 1
+	}
 	builder.WriteByte('}')
 
 	return builder.String()
@@ -111,4 +113,8 @@ func (i Intrinsic) String() string {
 
 func (u Unit) String() string {
 	return "()"
+}
+
+func (ins *Instance) Get(id *ir.Ident) Value {
+	return ins.Fields[id.Name]
 }

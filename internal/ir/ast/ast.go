@@ -175,6 +175,14 @@ type (
 		Sp     span.Span
 	}
 
+	// A field expression.
+	// `expr.ident`
+	FieldExpr struct {
+		Expr  Expr
+		Ident *Ident
+		Sp    span.Span
+	}
+
 	// An array expression.
 	// `[1, 2, 3]`
 	ArrayExpr struct {
@@ -229,6 +237,7 @@ func (*IfExpr) isExpr()         {}
 func (*BlockExpr) isExpr()      {}
 func (*CallExpr) isExpr()       {}
 func (*ClassExpr) isExpr()      {}
+func (*FieldExpr) isExpr()      {}
 func (*ArrayExpr) isExpr()      {}
 func (*IndexExpr) isExpr()      {}
 func (*ForExpr) isExpr()        {}
@@ -247,6 +256,7 @@ func (e *IfExpr) Span() span.Span         { return e.Sp }
 func (e *BlockExpr) Span() span.Span      { return e.Sp }
 func (e *CallExpr) Span() span.Span       { return e.Sp }
 func (e *ClassExpr) Span() span.Span      { return e.Sp }
+func (e *FieldExpr) Span() span.Span      { return e.Sp }
 func (e *ArrayExpr) Span() span.Span      { return e.Sp }
 func (e *IndexExpr) Span() span.Span      { return e.Sp }
 func (e *ForExpr) Span() span.Span        { return e.Sp }

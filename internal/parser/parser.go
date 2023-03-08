@@ -276,7 +276,7 @@ func (p *parser) parsePrecExpr(min_prec int) ast.Expr {
 }
 
 func (p *parser) parseCallOrIndexExpr() ast.Expr {
-	expr := p.parseBotExpr()
+	expr := p.parseFieldExpr()
 
 	if _, ok := p.eat(token.LParen); ok {
 		var args []ast.Expr
@@ -307,6 +307,22 @@ func (p *parser) parseCallOrIndexExpr() ast.Expr {
 		}
 		sp := expr.Span().To(closeSp)
 		return &ast.IndexExpr{Arr: expr, I: i, Sp: sp}
+	}
+
+	return expr
+}
+
+func (p *parser) parseFieldExpr() ast.Expr {
+	expr := p.parseBotExpr()
+
+	if _, ok := p.eat(token.Dot); ok {
+		ident := p.parseIdent()
+		if ident == nil {
+			p.error("expected identifier after `.`")
+			return &ast.ErrExpr{}
+		}
+		sp := expr.Span().To(ident.Sp)
+		return &ast.FieldExpr{Expr: expr, Ident: ident, Sp: sp}
 	}
 
 	return expr

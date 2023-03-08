@@ -186,6 +186,8 @@ func (b *binder) bindExpr(expr ast.Expr) bir.Expr {
 		return b.bindCallExpr(expr)
 	case *ast.ClassExpr:
 		return b.bindClassExpr(expr)
+	case *ast.FieldExpr:
+		return b.bindFieldExpr(expr)
 	case *ast.ArrayExpr:
 		return b.bindArrayExpr(expr)
 	case *ast.IndexExpr:
@@ -413,6 +415,36 @@ func (b *binder) bindExprFields(aFields []*ast.ExprField) []*bir.ExprField {
 func (b *binder) bindExprField(aField *ast.ExprField) *bir.ExprField {
 	expr := b.bindExpr(aField.Expr)
 	return &bir.ExprField{Ident: (*ir.Ident)(aField.Ident), Expr: expr}
+}
+
+func (b *binder) bindFieldExpr(aExpr *ast.FieldExpr) bir.Expr {
+	expr := b.bindExpr(aExpr.Expr)
+	decl := expr.(*bir.VarDecl)
+	var ty *bir.Ty
+	switch decl.Ty.Kind {
+	case bir.TyClass:
+		classExpr, _ := b.scope.Get(decl.Ty.Class.Name)
+		class := classExpr.(*bir.Class)
+		found := false
+		for _, f := range class.Fields {
+			if f.Ident.Name == aExpr.Ident.Name {
+				ty = f.Ty
+				found = true
+			}
+		}
+		if !found {
+			b.error(
+				aExpr.Ident.Sp,
+				"could not find field `%s` in class `%s`",
+				aExpr.Ident.Name,
+				class.Decl.Ident.Name,
+			)
+		}
+	default:
+		b.error(aExpr.Expr.Span(), "expected a class, but got `%s`", expr.Type())
+		return &bir.ErrExpr{}
+	}
+	return &bir.FieldExpr{Ident: (*ir.Ident)(aExpr.Ident), Expr: expr, Ty: ty}
 }
 
 func (b *binder) bindArrayExpr(expr *ast.ArrayExpr) bir.Expr {
