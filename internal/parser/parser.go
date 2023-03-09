@@ -366,6 +366,10 @@ func (p *parser) parseBotExpr() ast.Expr {
 }
 
 func (p *parser) parseClassExpr(ident *ast.Ident) ast.Expr {
+	if !p.lookahead(0).Is(token.Ident) {
+		return ident
+	}
+
 	if _, ok := p.eat(token.LBrace); !ok {
 		return ident
 	}
@@ -516,6 +520,14 @@ func (p *parser) parseIdent() *ast.Ident {
 		return &ast.Ident{Name: p.prevTok.Lit, Sp: sp}
 	}
 	return nil
+}
+
+func (p *parser) lookahead(n int) token.Token {
+	i := p.pos + n
+	if i < len(p.tokens) {
+		return p.tokens[i]
+	}
+	return p.tok
 }
 
 // eat advances the parser to the next token and returns true, if the current token kind
